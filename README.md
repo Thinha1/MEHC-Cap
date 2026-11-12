@@ -152,7 +152,7 @@ Observations:
 | `eval/flickr30k_eval.py` | Flickr30k evaluation (logit blocking + reranking) |
 | `eval/run_onoff_ablation.sh`, `onoff_postprocess.py` | On/off component experiments (see section 6) |
 | `webapp/` | Demo app (FastAPI + Next.js) that runs the pipeline step by step; see `webapp/backend/README.md` |
-| `papers/` | The 47 references of the paper, with links and the arXiv PDFs; see `papers/README.md` |
+| `papers/` | The 47 references of the paper, with DOI or paper links; see `papers/README.md` |
 | `references.bib` | BibTeX of the 47 references, keys `ref1` to `ref47` in order of first citation |
 
 Shared modules in the `demo/` root: `local_captioner.py`, `generate.py`, `clipscore.py`, `llm.py`, `formula_reranker.py`, `chair_metric.py`, `chair_synonyms.txt`, `evaluate_baseline.py`, `evaluate_reranked_quality.py`.
