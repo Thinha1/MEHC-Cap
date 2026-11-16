@@ -69,7 +69,7 @@ The five reranking signals (each min-max normalised within one image's candidate
 YOLO-World confidence threshold: the blocking rule and `S_belief` use 0.25, and only the evidence set of `S_obj` uses 0.55 (chosen on 1,000 validation images).
 The learned blocking layer (notebook 03) was an early control experiment and is not part of the final results.
 
-## 3. Results (Karpathy test sets, single seed)
+## 3. Results (Karpathy test sets)
 
 Configuration names list the components that are switched on:
 
@@ -81,21 +81,22 @@ Configuration names list the components that are switched on:
 | `LB(·)` | Logit blocking rule, with the evidence source in brackets: `Y` = YOLO-World, `R` = retrieved captions, `Y+R` = union of both |
 | `RR` | Five-signal reranker |
 
-MEHC-Cap is the full configuration **`DL+CL + LB(Y+R) + RR`**. MS COCO: 5,000 test images, CHAIR computed on the 4,967 images that have object labels. CHs/CHi: CHAIRs/CHAIRi (%, lower is better).
+MEHC-Cap is the full configuration **`DL+CL + LB(Y+R) + RR`**. MS COCO: 5,000 test images, CHAIR computed on the 4,967 images that have object labels, mean ± sample standard deviation over three training runs (seeds 41, 42, 43, epoch-40 checkpoint of each) for both the baseline and the proposed generator. Flickr30k: one run. CHs/CHi: CHAIRs/CHAIRi (%, lower is better).
 
 | Dataset | Configuration | B-4 | METEOR | ROUGE-L | CIDEr | SPICE | CHs | CHi |
 |---|---|---|---|---|---|---|---|---|
-| MS COCO | `CE` | 36.71 | 28.70 | 57.50 | 119.90 | 21.69 | 7.01 | 4.88 |
-| MS COCO | `CE + RR` | 35.58 | 28.35 | 56.31 | 119.26 | 21.66 | 2.56 | 1.85 |
-| MS COCO | `DL+CL + LB(Y+R)` | 36.88 | 28.55 | 57.61 | 119.67 | 21.59 | 3.46 | 2.49 |
-| MS COCO | **`DL+CL + LB(Y+R) + RR`** | 35.98 | 28.36 | 56.61 | 119.72 | 21.73 | **1.71** | **1.24** |
+| MS COCO | `CE` | 36.31 ± 0.34 | 28.61 ± 0.08 | 57.36 ± 0.14 | 118.91 ± 0.97 | 21.51 ± 0.18 | 7.04 ± 0.08 | 4.87 ± 0.11 |
+| MS COCO | `CE + RR` | 35.18 ± 0.37 | 28.30 ± 0.06 | 56.21 ± 0.17 | 118.22 ± 0.86 | 21.57 ± 0.10 | 2.52 ± 0.07 | 1.81 ± 0.05 |
+| MS COCO | `DL+CL + LB(Y+R)` | 37.22 ± 0.39 | 28.62 ± 0.10 | 57.60 ± 0.11 | 120.18 ± 0.82 | 21.72 ± 0.11 | 3.19 ± 0.08 | 2.29 ± 0.08 |
+| MS COCO | **`DL+CL + LB(Y+R) + RR`** | 36.05 ± 0.17 | 28.44 ± 0.05 | 56.70 ± 0.04 | 119.51 ± 0.43 | 21.70 ± 0.09 | **1.84 ± 0.14** | **1.34 ± 0.10** |
 | Flickr30k | `CE` | 32.81 | 24.15 | 52.46 | 73.93 | 17.86 | 6.48 | 4.94 |
 | Flickr30k | `CE + RR` | 31.71 | 24.22 | 51.97 | 74.20 | 18.00 | 3.95 | 3.24 |
 | Flickr30k | `DL+CL + LB(Y+R)` | 30.21 | 23.85 | 51.97 | 68.06 | 17.73 | 3.24 | 2.62 |
 | Flickr30k | **`DL+CL + LB(Y+R) + RR`** | 31.02 | 23.88 | 52.02 | 71.61 | 18.11 | **2.23** | **1.96** |
 
-- On MS COCO the proposed model lowers CHAIRs from 7.01 to 1.71 (-75.6%) and CHAIRi from 4.88 to 1.24 (-74.6%), with CIDEr 0.18 points below the baseline and SPICE almost unchanged (21.73 vs 21.69).
+- On MS COCO the proposed model lowers CHAIRs from 7.04 to 1.84 (-73.9%) and CHAIRi from 4.87 to 1.34 (-72.5%), with CIDEr 0.60 points above the baseline (119.51 vs 118.91) and SPICE 21.70 vs 21.51.
 - On Flickr30k CHAIRs drops from 6.48 to 2.23, but CIDEr is 2.32 points below the baseline: there, less hallucination costs some caption quality.
+- The rest of this section (object coverage, per-image changes, signal and on/off ablations, inference cost) comes from one earlier run of the final checkpoint, so its numbers differ slightly from the three-seed means above.
 - The model does not lower CHAIR by avoiding objects: 1.33 COCO object classes per caption (proposed) versus 1.46 (baseline) and 1.36 (reference captions), 8.36% of captions mention no COCO object versus 5.96% (references 10.88%), and recall against objects named by the reference captions is 68.96% versus 71.05%.
 - Per image against `CE`: 293 images lose their hallucination, 30 gain a new one (mostly from YOLO-World false detections), 55 are wrong in both.
 
