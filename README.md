@@ -150,7 +150,7 @@ Observations:
 | `eval/sretr_experiment.py`, `signal_table.py`, `rerank_with_new_objects.py` | `S_obj`/`S_retr` signals; three/five-signal table; reranking for the no-blocking configuration |
 | `eval/flickr30k_eval.py` | Flickr30k evaluation (logit blocking + reranking) |
 | `eval/run_onoff_ablation.sh`, `onoff_postprocess.py` | On/off component experiments (see section 6) |
-| `webapp/` | Demo app (FastAPI + Next.js) that runs the pipeline step by step; see `webapp/backend/README.md` |
+| `webapp/` | Demo app (FastAPI + Next.js) that runs the pipeline step by step; see `webapp/README.md` |
 | `papers/` | The 47 references of the paper, with DOI or paper links; see `papers/README.md` |
 | `references.bib` | BibTeX of the 47 references, keys `ref1` to `ref47` in order of first citation |
 
