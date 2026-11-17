@@ -96,55 +96,53 @@ MEHC-Cap is the full configuration **`DL+CL + LB(Y+R) + RR`**. MS COCO: 5,000 te
 
 - On MS COCO the proposed model lowers CHAIRs from 7.04 to 1.84 (-73.9%) and CHAIRi from 4.87 to 1.34 (-72.5%), with CIDEr 0.60 points above the baseline (119.51 vs 118.91) and SPICE 21.70 vs 21.51.
 - On Flickr30k CHAIRs drops from 6.48 to 2.23, but CIDEr is 2.32 points below the baseline: there, less hallucination costs some caption quality.
-- The rest of this section (object coverage, per-image changes, signal and on/off ablations, inference cost) comes from one earlier run of the final checkpoint, so its numbers differ slightly from the three-seed means above.
-- The model does not lower CHAIR by avoiding objects: 1.33 COCO object classes per caption (proposed) versus 1.46 (baseline) and 1.36 (reference captions), 8.36% of captions mention no COCO object versus 5.96% (references 10.88%), and recall against objects named by the reference captions is 68.96% versus 71.05%.
-- Per image against `CE`: 293 images lose their hallucination, 30 gain a new one (mostly from YOLO-World false detections), 55 are wrong in both.
+- The model does not lower CHAIR by avoiding objects (three-seed means): 1.34 COCO object classes per caption (proposed) versus 1.46 (baseline) and 1.36 (reference captions), 7.94% of captions mention no COCO object versus 6.31% (references 10.88%), and recall against objects named by the reference captions is 69.23% versus 71.02%.
 
-**Contribution of each reranking signal** (MS COCO test, generator `DL+CL + LB(Y+R)`):
+**Contribution of each reranking signal** (MS COCO test, generator `DL+CL + LB(Y+R)`, mean ± std over seeds 41, 42, 43):
 
 | Configuration | B-4 | CIDEr | CHs | CHi |
 |---|---|---|---|---|
-| Before reranking | 36.88 | 119.67 | 3.46 | 2.49 |
-| Five signals (r = 3) | 35.98 | 119.72 | 1.71 | 1.24 |
-| Without `S_obj` | 36.31 | 120.87 | 2.60 | 1.86 |
-| Without `S_retr` | 35.78 | 118.66 | 1.71 | 1.25 |
-| Five signals, r = 1 | 36.08 | 120.23 | 1.97 | 1.42 |
+| Before reranking | 37.22 ± 0.39 | 120.18 ± 0.82 | 3.19 ± 0.08 | 2.29 ± 0.08 |
+| Five signals (r = 3) | 36.05 ± 0.17 | 119.51 ± 0.43 | 1.84 ± 0.14 | 1.34 ± 0.10 |
+| Without `S_obj` | 36.29 ± 0.16 | 120.43 ± 0.31 | 2.65 ± 0.14 | 1.89 ± 0.11 |
+| Without `S_retr` | 35.86 ± 0.15 | 118.81 ± 0.36 | 1.79 ± 0.14 | 1.32 ± 0.11 |
+| Five signals, r = 1 | 36.19 ± 0.11 | 120.10 ± 0.35 | 2.17 ± 0.09 | 1.58 ± 0.06 |
 
-`S_obj` reduces hallucination (removing it raises CHAIRs to 2.60), while `S_retr` keeps caption quality (removing it lowers CIDEr by 1.06 points with CHAIRs unchanged).
+`S_obj` reduces hallucination (removing it raises CHAIRs to 2.65), while `S_retr` keeps caption quality (removing it lowers CIDEr by 0.70 points, with CHAIRs about the same, 1.79 vs 1.84).
 
 **Inference cost (per image, RTX 3050 Laptop):** 1,855 ms for the full pipeline versus 357 ms for the baseline with one beam-search caption. Retrieval adds 52 ms, the two retrieval-based signals 38 ms, YOLO-World 111 ms, the reranker 197 ms.
 
-**On/off ablation (MS COCO, 5,000 images, one seed).** "Before"/"after" means before/after adding `RR`. CHAIRs and CHAIRi (%) are computed on 4,967 images, and recall is the % of objects named by the reference captions that the generated caption mentions. The evidence source feeds both the blocking rule and the `S_obj` signal, and the no-blocking rows use the union of both sources. δ = 3 was chosen on the validation split with the union source and kept for the other sources. SPICE was not measured.
+**On/off ablation (MS COCO, 5,000 images).** "Before"/"after" means before/after adding `RR`. CHAIRs and CHAIRi (%) are computed on 4,967 images, and recall is the % of objects named by the reference captions that the generated caption mentions. The evidence source feeds both the blocking rule and the `S_obj` signal, and the no-blocking rows use the union of both sources. δ = 3 was chosen on the validation split with the union source and kept for the other sources. SPICE was not measured. C1, C2, C7 and C10 are mean ± std over seeds 41, 42, 43 (epoch-40 checkpoints); C3 to C6, C8 and C9 are single runs.
 
 | # | Configuration | CHAIRs before | CIDEr before | CHAIRs after | CHAIRi after | CIDEr after | Recall after |
 |---|---|---|---|---|---|---|---|
-| C1 | `CE` | 7.01 | 119.90 | 2.56 | 1.85 | 119.26 | 69.4 |
-| C2 | `CE + LB(Y+R)` | 3.81 | 119.14 | 2.03 | 1.49 | 119.08 | 68.9 |
+| C1 | `CE` | 7.04 ± 0.08 | 118.91 ± 0.97 | 2.52 ± 0.07 | 1.81 ± 0.05 | 118.22 ± 0.86 | 69.30 ± 0.15 |
+| C2 | `CE + LB(Y+R)` | 3.64 ± 0.28 | 118.02 ± 1.10 | 1.86 ± 0.18 | 1.36 ± 0.14 | 117.90 ± 1.06 | 68.78 ± 0.01 |
 | C3 | `DL` | 7.05 | 119.18 | 3.10 | 2.20 | 119.07 | 70.0 |
 | C4 | `DL + LB(Y+R)` | 3.24 | 118.79 | 2.11 | 1.51 | 119.44 | 69.5 |
 | C5 | `CL` | 7.15 | 120.43 | 2.88 | 2.03 | 119.56 | 69.9 |
 | C6 | `CL + LB(Y+R)` | 3.28 | 120.08 | 1.89 | 1.36 | 120.22 | 69.4 |
-| C7 | `DL+CL` | 6.68 | 120.79 | 2.56 | 1.83 | 120.37 | 69.4 |
+| C7 | `DL+CL` | 6.99 ± 0.33 | 121.24 ± 1.00 | 2.69 ± 0.04 | 1.96 ± 0.06 | 119.80 ± 0.43 | 69.74 ± 0.04 |
 | C8 | `DL+CL + LB(Y)` | 2.90 | 118.51 | 1.27 | 0.95 | 117.01 | 66.7 |
 | C9 | `DL+CL + LB(R)` | 2.64 | 114.83 | 1.25 | 1.07 | 112.61 | 59.6 |
-| **C10** | **`DL+CL + LB(Y+R)`** | **3.46** | **119.67** | **1.71** | **1.24** | **119.72** | **69.0** |
+| **C10** | **`DL+CL + LB(Y+R)`** | **3.19 ± 0.08** | **120.18 ± 0.82** | **1.84 ± 0.14** | **1.34 ± 0.10** | **119.51 ± 0.43** | **69.23 ± 0.09** |
 
 Observations:
-- Logit blocking removes the most hallucination at generation time: CHAIRs 6.68 (C7) to 3.46 (C10) for the proposed generator, 7.01 (C1) to 3.81 (C2) for the baseline.
-- Without blocking, the proposed generator reduces hallucination only slightly (CHAIRs before 6.68 vs 7.01, equal at 2.56 after `RR`) but gives higher CIDEr (120.37 vs 119.26). With blocking on for both, C10 reaches CHAIRs 1.71 versus 2.03 for C2, with CIDEr 119.72 versus 119.08.
-- Each training component alone is not enough: with blocking, Dynamic Logits only (C4) gives CHAIRs 2.11 and contrastive only (C6) gives 1.89, both above the combination (C10, 1.71).
-- YOLO-World-only (C8) or retrieval-only (C9) evidence gives lower CHAIRs, but CIDEr drops by 2.71 and 7.11 points and recall falls to 66.7% and 59.6%, i.e. the model mentions far fewer objects. The union source balances hallucination and caption quality, so it is the one used.
+- Logit blocking removes the most hallucination at generation time: CHAIRs 6.99 (C7) to 3.19 (C10) for the proposed generator, 7.04 (C1) to 3.64 (C2) for the baseline.
+- Without blocking, the proposed generator has about the same hallucination as the baseline (CHAIRs before 6.99 vs 7.04, after `RR` 2.69 vs 2.52) but higher CIDEr (119.80 vs 118.22 after `RR`). With blocking on for both, C10 reaches CHAIRs 1.84 versus 1.86 for C2, a gap within the seed standard deviation, with CIDEr 119.51 versus 117.90.
+- Each training component alone is not enough: with blocking, Dynamic Logits only (C4) gives CHAIRs 2.11 and contrastive only (C6) gives 1.89, both above the combination (C10, 1.84), C6 only slightly.
+- YOLO-World-only (C8) or retrieval-only (C9) evidence gives lower CHAIRs, but CIDEr drops by 2.50 and 6.90 points against C10 and recall falls to 66.7% and 59.6%, i.e. the model mentions far fewer objects. The union source balances hallucination and caption quality, so it is the one used.
 
 ## 4. Folder layout
 
 | Path | Role |
 |---|---|
-| `notebooks/01_baseline_clipvit-transformer-coco2014.ipynb` | Train the baseline (cross-entropy), produces `restval_baseline_best_model.pth` |
-| `notebooks/02_train_proposed_dynlogits_contrastive_attnpool.ipynb` | Train the **proposed model** (Dynamic Logits + multi-positive contrastive learning + attention pooling) in two stages (see the first cell), keeps the checkpoint with the lowest validation loss (`restval_dynlogits_contrastive_attnpool_best_model.pth`) |
+| `notebooks/01_baseline_clipvit-transformer-coco2014.ipynb` | Train the baseline (cross-entropy) for 40 epochs; the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`baseline_epoch40_seed{41,42,43}.pth`) |
+| `notebooks/02_train_proposed_dynlogits_contrastive_attnpool.ipynb` | Train the **proposed model** (Dynamic Logits + multi-positive contrastive learning + attention pooling) in two stages (see the first cell); the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`seed{41,42,43}_dynlogits_contrastive_attnpool_epoch40_model.pth`) |
 | `notebooks/03_ablation_learned_gate_evgatedrop.ipynb` | Control configuration: learned blocking layer (EvidenceGate) |
 | `notebooks/04_flickr30k_train_baseline.ipynb`, `05_flickr30k_train_proposed.ipynb` | Train baseline and proposed model on Flickr30k |
 | `notebooks/eval/coco2014-eval-preranking.ipynb` | Evaluate captions before reranking (plain beam search) |
-| `notebooks/eval/coco2014-eval-reranking.ipynb` | Evaluate the full pipeline: candidate generation with the blocking rule, then reranking |
+| `notebooks/eval/coco2014-eval-reranking.ipynb` | Evaluate the full pipeline: candidate generation with the blocking rule, then reranking ([Kaggle](https://www.kaggle.com/code/nganhthnh/mehc-cap-eval-reranking)) |
 | `eval/build_yoloworld_report.py` | Build the YOLO-World object report (the evidence) for an evaluation split |
 | `eval/retrieval_logit_bias_experiment.py` | Generate captions with the blocking rule (`--configs 0,δ`), optional evidence source `--evidence union/yolo/retr` |
 | `eval/logit_bias_final_eval.py` | Merge shards and compute all metrics |
@@ -165,7 +163,11 @@ Shared modules in the `demo/` root: `local_captioner.py`, `generate.py`, `clipsc
 - Checkpoints (`*.pth`, about 500 MB each) go in the `demo/` root; the copies used by the demo are in `webapp/backend/weights/`. Training ran on Kaggle (T4), evaluation ran locally.
 - The constants in notebooks 01, 02, 04 and 05 are set to the reported configuration (3-layer decoder, batch 64 for COCO). The originals in `research/notebooks/` carry different values (96 / 2 layers); the notebooks have not been re-run on Kaggle to confirm.
 
-## 6. Re-running the evaluation (from `demo/`)
+## 6. Re-running the evaluation
+
+**Three-seed results (Kaggle).** The MS COCO numbers for `CE`, `CE + RR`, `DL+CL + LB(Y+R)`, MEHC-Cap and C1, C2, C7, C10 come from `notebooks/eval/coco2014-eval-reranking.ipynb` ([Kaggle notebook](https://www.kaggle.com/code/nganhthnh/mehc-cap-eval-reranking)), run once per checkpoint (seeds 41, 42, 43 of the baseline and of the proposed model) with `RUN_BOTH = True`, which writes one JSON for δ = 0 and one for δ = 3. SPICE was added afterwards on CPU from those JSON files (`research/scripts/eval_notebook_json.py --spice` at the `demo/` root).
+
+**Local scripts (from `demo/`)**, used for the single-run rows C3 to C6, C8 and C9:
 
 1. **YOLO-World evidence** for the evaluation split:
 
@@ -176,13 +178,13 @@ Shared modules in the `demo/` root: `local_captioner.py`, `generate.py`, `clipsc
 2. **Choose δ on the first 1,000 val images** (this sweep was run once with an earlier checkpoint and has not been repeated with the final one; pick the δ with the lowest CHAIRs after reranking whose CIDEr is not more than 1 point below the no-blocking case):
 
    ```
-   python MEHC-Cap/eval/retrieval_logit_bias_experiment.py --report results/val1000_yoloworld.json --max-images 1000 --checkpoint restval_dynlogits_contrastive_attnpool_best_model.pth --vocab-file ../dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json --configs 0,0 0,1 0,2 0,3 0,4 --output results/ksweep_val1000.json
+   python MEHC-Cap/eval/retrieval_logit_bias_experiment.py --report results/val1000_yoloworld.json --max-images 1000 --checkpoint seed42_dynlogits_contrastive_attnpool_epoch40_model.pth --vocab-file ../dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json --configs 0,0 0,1 0,2 0,3 0,4 --output results/ksweep_val1000.json
    ```
 
 3. **Generate on test** with δ = 3, in 4 shards so an interrupted run loses nothing (`--save-rows` keeps the candidates for step 4):
 
    ```
-   python MEHC-Cap/eval/retrieval_logit_bias_experiment.py --report results/test_yoloworld.json --start 0 --max-images 1250 --maj 3 --save-rows --checkpoint restval_dynlogits_contrastive_attnpool_best_model.pth --vocab-file ../dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json --configs 0,3 --output results/g3_test_part0.json
+   python MEHC-Cap/eval/retrieval_logit_bias_experiment.py --report results/test_yoloworld.json --start 0 --max-images 1250 --maj 3 --save-rows --checkpoint seed42_dynlogits_contrastive_attnpool_epoch40_model.pth --vocab-file ../dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json --configs 0,3 --output results/g3_test_part0.json
    ```
 
    Repeat with `--start 1250`, `2500`, `3750`.
