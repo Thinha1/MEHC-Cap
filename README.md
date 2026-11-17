@@ -112,26 +112,26 @@ MEHC-Cap is the full configuration **`DL+CL + LB(Y+R) + RR`**. MS COCO: 5,000 te
 
 **Inference cost (per image, RTX 3050 Laptop):** 1,855 ms for the full pipeline versus 357 ms for the baseline with one beam-search caption. Retrieval adds 52 ms, the two retrieval-based signals 38 ms, YOLO-World 111 ms, the reranker 197 ms.
 
-**On/off ablation (MS COCO, 5,000 images).** "Before"/"after" means before/after adding `RR`. CHAIRs and CHAIRi (%) are computed on 4,967 images, and recall is the % of objects named by the reference captions that the generated caption mentions. The evidence source feeds both the blocking rule and the `S_obj` signal, and the no-blocking rows use the union of both sources. δ = 3 was chosen on the validation split with the union source and kept for the other sources. SPICE was not measured. C1, C2 and C7 to C10 are mean ± std over seeds 41, 42, 43 (epoch-40 checkpoints); C3 to C6 are single runs.
+**On/off ablation (MS COCO, 5,000 images).** "Before"/"after" means before/after adding `RR`. CHAIRs and CHAIRi (%) are computed on 4,967 images, and recall is the % of objects named by the reference captions that the generated caption mentions. The evidence source feeds both the blocking rule and the `S_obj` signal, and the no-blocking rows use the union of both sources. δ = 3 was chosen on the validation split with the union source and kept for the other sources. SPICE was not measured. Every row is a single run: C1, C2 and C7 to C10 use the seed-42 epoch-40 checkpoints, so they differ slightly from the three-seed means above.
 
 | # | Configuration | CHAIRs before | CIDEr before | CHAIRs after | CHAIRi after | CIDEr after | Recall after |
 |---|---|---|---|---|---|---|---|
-| C1 | `CE` | 7.04 ± 0.08 | 118.91 ± 0.97 | 2.52 ± 0.07 | 1.81 ± 0.05 | 118.22 ± 0.86 | 69.30 ± 0.15 |
-| C2 | `CE + LB(Y+R)` | 3.64 ± 0.28 | 118.02 ± 1.10 | 1.86 ± 0.18 | 1.36 ± 0.14 | 117.90 ± 1.06 | 68.78 ± 0.01 |
+| C1 | `CE` | 7.03 | 119.87 | 2.54 | 1.84 | 119.21 | 69.3 |
+| C2 | `CE + LB(Y+R)` | 3.83 | 119.01 | 2.07 | 1.52 | 119.08 | 68.8 |
 | C3 | `DL` | 7.05 | 119.18 | 3.10 | 2.20 | 119.07 | 70.0 |
 | C4 | `DL + LB(Y+R)` | 3.24 | 118.79 | 2.11 | 1.51 | 119.44 | 69.5 |
 | C5 | `CL` | 7.15 | 120.43 | 2.88 | 2.03 | 119.56 | 69.9 |
 | C6 | `CL + LB(Y+R)` | 3.28 | 120.08 | 1.89 | 1.36 | 120.22 | 69.4 |
-| C7 | `DL+CL` | 6.99 ± 0.33 | 121.24 ± 1.00 | 2.69 ± 0.04 | 1.96 ± 0.06 | 119.80 ± 0.43 | 69.74 ± 0.04 |
-| C8 | `DL+CL + LB(Y)` | 2.77 ± 0.19 | 119.04 ± 0.87 | 1.35 ± 0.09 | 1.03 ± 0.08 | 116.61 ± 0.59 | 66.68 ± 0.03 |
-| C9 | `DL+CL + LB(R)` | 2.66 ± 0.12 | 115.49 ± 0.79 | 1.62 ± 0.20 | 1.44 ± 0.15 | 112.59 ± 0.38 | 59.54 ± 0.22 |
-| **C10** | **`DL+CL + LB(Y+R)`** | **3.19 ± 0.08** | **120.18 ± 0.82** | **1.84 ± 0.14** | **1.34 ± 0.10** | **119.51 ± 0.43** | **69.23 ± 0.09** |
+| C7 | `DL+CL` | 7.11 | 120.75 | 2.74 | 2.01 | 119.36 | 69.8 |
+| C8 | `DL+CL + LB(Y)` | 2.92 | 118.42 | 1.45 | 1.12 | 116.00 | 66.6 |
+| C9 | `DL+CL + LB(R)` | 2.58 | 114.96 | 1.49 | 1.37 | 112.28 | 59.4 |
+| **C10** | **`DL+CL + LB(Y+R)`** | **3.24** | **119.59** | **1.97** | **1.44** | **119.10** | **69.3** |
 
 Observations:
-- Logit blocking removes the most hallucination at generation time: CHAIRs 6.99 (C7) to 3.19 (C10) for the proposed generator, 7.04 (C1) to 3.64 (C2) for the baseline.
-- Without blocking, the proposed generator has about the same hallucination as the baseline (CHAIRs before 6.99 vs 7.04, after `RR` 2.69 vs 2.52) but higher CIDEr (119.80 vs 118.22 after `RR`). With blocking on for both, C10 reaches CHAIRs 1.84 versus 1.86 for C2, a gap within the seed standard deviation, with CIDEr 119.51 versus 117.90.
-- Each training component alone is not enough: with blocking, Dynamic Logits only (C4) gives CHAIRs 2.11 and contrastive only (C6) gives 1.89, both above the combination (C10, 1.84), C6 only slightly.
-- YOLO-World-only (C8) or retrieval-only (C9) evidence gives lower CHAIRs, but CIDEr drops by 2.90 and 6.92 points against C10 and recall falls to 66.7% and 59.5%, i.e. the model mentions far fewer objects. The union source balances hallucination and caption quality, so it is the one used.
+- Logit blocking removes the most hallucination at generation time: CHAIRs 7.11 (C7) to 3.24 (C10) for the proposed generator, 7.03 (C1) to 3.83 (C2) for the baseline.
+- Without blocking, the proposed generator has about the same hallucination as the baseline (CHAIRs before 7.11 vs 7.03, after `RR` 2.74 vs 2.54) and a slightly higher CIDEr (119.36 vs 119.21 after `RR`). With blocking on for both, C10 reaches CHAIRs 1.97 versus 2.07 for C2, with the same CIDEr (119.10 vs 119.08).
+- With blocking, Dynamic Logits only (C4) gives CHAIRs 2.11, above the combination (C10, 1.97), while contrastive only (C6) gives 1.89, slightly below it.
+- YOLO-World-only (C8) or retrieval-only (C9) evidence gives lower CHAIRs, but CIDEr drops by 3.10 and 6.82 points against C10 and recall falls to 66.6% and 59.4%, i.e. the model mentions far fewer objects. The union source balances hallucination and caption quality, so it is the one used.
 
 ## 4. Folder layout
 
@@ -165,7 +165,7 @@ Shared modules in the `demo/` root: `local_captioner.py`, `generate.py`, `clipsc
 
 ## 6. Re-running the evaluation
 
-**Three-seed results (Kaggle).** The MS COCO numbers for `CE`, `CE + RR`, `DL+CL + LB(Y+R)`, MEHC-Cap and C1, C2, C7 to C10 come from `notebooks/eval/coco2014-eval-reranking.ipynb` ([Kaggle notebook](https://www.kaggle.com/code/nganhthnh/mehc-cap-eval-reranking)), run once per checkpoint (seeds 41, 42, 43 of the baseline and of the proposed model) with `RUN_BOTH = True`, which writes one JSON for δ = 0 and one for δ = 3. C8 and C9 use `RUN_BOTH = False` and `EVIDENCE_SOURCES = ["yolo", "retr"]`. SPICE was added afterwards on CPU from those JSON files (`research/scripts/eval_notebook_json.py --spice` at the `demo/` root).
+**Three-seed results (Kaggle).** The MS COCO numbers for `CE`, `CE + RR`, `DL+CL + LB(Y+R)` and MEHC-Cap come from `notebooks/eval/coco2014-eval-reranking.ipynb` ([Kaggle notebook](https://www.kaggle.com/code/nganhthnh/mehc-cap-eval-reranking)), run once per checkpoint (seeds 41, 42, 43 of the baseline and of the proposed model) with `RUN_BOTH = True`, which writes one JSON for δ = 0 and one for δ = 3. The on/off rows C1, C2 and C7 to C10 are the seed-42 runs of the same notebook. C8 and C9 use `RUN_BOTH = False` and `EVIDENCE_SOURCES = ["yolo", "retr"]`. SPICE was added afterwards on CPU from those JSON files (`research/scripts/eval_notebook_json.py --spice` at the `demo/` root).
 
 **Local scripts (from `demo/`)**, used for the single-run rows C3 to C6:
 
