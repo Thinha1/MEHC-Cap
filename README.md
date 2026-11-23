@@ -148,14 +148,12 @@ Observations:
 | `papers/` | The 47 references of the paper, with DOI or paper links; see `papers/README.md` |
 | `references.bib` | BibTeX of the 47 references, keys `ref1` to `ref47` in order of first citation |
 
-Shared modules in the `demo/` root: `local_captioner.py`, `generate.py`, `clipscore.py`, `llm.py`, `formula_reranker.py`, `chair_metric.py`, `chair_synonyms.txt`, `evaluate_baseline.py`, `evaluate_reranked_quality.py`.
-
 ## 5. Setup and data
 
 - Python 3.10, `pip install -r requirements.txt` (in the `demo/` root), PyTorch with CUDA, Java (for METEOR and SPICE).
 - Data lives in `../dataset/` (outside the repo): `dataset_coco.json` (Karpathy split), `instances_val2014.json`, `val2014/val2014/` (images), `retrieval_cache/` (caption store and neighbour indices), vocabulary `coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json` (10,031 words).
-- Checkpoints (`*.pth`, about 500 MB each) go in the `demo/` root; the copies used by the demo are in `webapp/backend/weights/`. Training ran on Kaggle (T4), evaluation ran locally.
-- The constants in notebooks 01, 02, 04 and 05 are set to the reported configuration (3-layer decoder, batch 64 for COCO). The originals in `research/notebooks/` carry different values (96 / 2 layers); the notebooks have not been re-run on Kaggle to confirm.
+- Checkpoints (`*.pth`, about 500 MB each); the models are in `webapp/backend/weights/`. Training ran on Kaggle (T4), evaluation ran locally.
+- The constants in notebooks 01, 02, 03 and 04 are set to the reported configuration (3-layer decoder, batch 64 for COCO).
 
 ## 6. Re-running the evaluation
 
