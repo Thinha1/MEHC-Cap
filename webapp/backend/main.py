@@ -3,7 +3,7 @@
 Run with the Python 3.10 interpreter that already has torch/ultralytics/transformers/fastapi
 installed (see webapp/backend/README.md), from the folder that contains webapp/:
 
-    C:\\Users\\thinh\\AppData\\Local\\Programs\\Python\\Python310\\python.exe -m uvicorn webapp.backend.main:app --port 8000
+    python -m uvicorn webapp.backend.main:app --port 8000
 """
 
 from __future__ import annotations

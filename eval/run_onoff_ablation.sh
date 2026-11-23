@@ -5,7 +5,7 @@
 #   bash Graduation_Thesis/eval/run_onoff_ablation.sh B   # đề xuất không chặn (e40_g0), rồi đề xuất chỉ truy hồi (e40_retr)
 # Chạy từ thư mục demo/. Kết quả: results/onoff/<tên>_part<start>.json
 set -u
-PY="/c/Users/thinh/AppData/Local/Programs/Python/Python310/python.exe"
+PY="${PY:-python}"  # override with PY=/path/to/python
 REPORT=results/seed43_restval_e10_rerank_test_yoloworld.json
 VOCAB=../dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json
 E40=restval_dynlogits_contrastive_attnpool_epoch40_model.pth

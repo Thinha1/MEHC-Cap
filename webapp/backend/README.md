@@ -14,13 +14,13 @@ Dung Python 3.10 co san torch/ultralytics/transformers/fastapi/uvicorn (kiem tra
 mac dinh tren PATH KHONG co cac package nay):
 
 ```powershell
-"C:\Users\thinh\AppData\Local\Programs\Python\Python310\python.exe" -m pip install -r webapp/backend/requirements.txt
+python -m pip install -r webapp/backend/requirements.txt
 ```
 
-Chay server (tu thu muc chua `webapp/`, vi du `d:\Documents\BaiTap\KiCuiCung\KLCN`):
+Chay server (tu thu muc chua `webapp/`):
 
 ```powershell
-"C:\Users\thinh\AppData\Local\Programs\Python\Python310\python.exe" -m uvicorn webapp.backend.main:app --reload --port 8000
+python -m uvicorn webapp.backend.main:app --reload --port 8000
 ```
 
 API docs: http://localhost:8000/docs

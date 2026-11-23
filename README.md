@@ -63,7 +63,6 @@ The five reranking signals (each min-max normalised within one image's candidate
 | `S_retr` | closeness of the candidate to the retrieved captions |
 
 YOLO-World confidence threshold: the blocking rule and `S_belief` use 0.25, and only the evidence set of `S_obj` uses 0.55 (chosen on 1,000 validation images).
-The learned blocking layer (notebook 03) was an early control experiment and is not part of the final results.
 
 ## 3. Results (Karpathy test sets)
 
@@ -135,8 +134,7 @@ Observations:
 |---|---|
 | `notebooks/01_baseline_clipvit-transformer-coco2014.ipynb` | Train the baseline (cross-entropy) for 40 epochs; the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`baseline_epoch40_seed{41,42,43}.pth`) |
 | `notebooks/02_train_proposed_dynlogits_contrastive_attnpool.ipynb` | Train the **proposed model** (Dynamic Logits + multi-positive contrastive learning + attention pooling) in two stages (see the first cell); the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`seed{41,42,43}_dynlogits_contrastive_attnpool_epoch40_model.pth`) |
-| `notebooks/03_ablation_learned_gate_evgatedrop.ipynb` | Control configuration: learned blocking layer (EvidenceGate) |
-| `notebooks/04_flickr30k_train_baseline.ipynb`, `05_flickr30k_train_proposed.ipynb` | Train baseline and proposed model on Flickr30k |
+| `notebooks/03_flickr30k_train_baseline.ipynb`, `04_flickr30k_train_proposed.ipynb` | Train baseline and proposed model on Flickr30k |
 | `notebooks/eval/coco2014-eval-preranking.ipynb` | Evaluate captions before reranking (plain beam search) |
 | `notebooks/eval/coco2014-eval-reranking.ipynb` | Evaluate the full pipeline: candidate generation with the blocking rule, then reranking ([Kaggle](https://www.kaggle.com/code/nganhthnh/mehc-cap-eval-reranking)) |
 | `eval/build_yoloworld_report.py` | Build the YOLO-World object report (the evidence) for an evaluation split |
