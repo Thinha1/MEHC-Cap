@@ -204,21 +204,6 @@ checkpoints/                # *.pth from the release
 results/                    # outputs; results/kaggle/ holds the released result files
 ```
 
-**Checkpoints and released results.** All checkpoints store the training seed and epoch (`ckpt["seed"]`, `ckpt["epoch"]`, 0-based) next to the weights. Download links: `<ANONYMOUS_LINK>`.
-
-| File (put in `checkpoints/`) | Model | Seed | Epoch | SHA-256 |
-|---|---|---|---|---|
-| `seed41_dynlogits_contrastive_attnpool_epoch40_model.pth` | Proposed generator (`DL+CL`) | 41 | 40 | `ff69eaddde11682b6533bb5df055f43ecc6833834f49d59287fde59667778f1d` |
-| `seed42_dynlogits_contrastive_attnpool_epoch40_model.pth` | Proposed generator (`DL+CL`) | 42 | 40 | `4716f60884cccaf0f6d5ae780fa8af3800a73cbdd3c747daf9452e5c3508ff3c` |
-| `seed43_dynlogits_contrastive_attnpool_epoch40_model.pth` | Proposed generator (`DL+CL`) | 43 | 40 | `ce58dedce5a1fdd5bb27d633efba1f44c0602174bf568036a74ebdf138cedc25` |
-| `baseline_epoch40_seed41.pth` | Baseline (`CE`) | 41 | 40 | `<SHA256>` |
-| `baseline_epoch40_seed42.pth` | Baseline (`CE`) | 42 | 40 | `<SHA256>` |
-| `baseline_epoch40_seed43.pth` | Baseline (`CE`) | 43 | 40 | `<SHA256>` |
-| `seed42_dynlogits_epoch40_model.pth` | Dynamic Logits only (`DL`) | 42 | 40 | `<SHA256>` |
-| `seed42_contrastive_attnpool_epoch40_model.pth` | Contrastive learning only (`CL`) | 42 | 40 | `<SHA256>` |
-
-Check a download with `sha256sum checkpoints/*.pth` (Windows: `certutil -hashfile <file> SHA256`).
-
 The release also contains `results/kaggle/`: for every checkpoint and setting of the main and on/off tables (18 runs), the result file of `notebooks/eval/coco2014-eval-reranking.ipynb` with, per test image, the YOLO-World objects, the retrieved neighbours, the evidence set, all candidate captions, their reranking scores (`S_base`, `S_align`, `S_det` and the total), the caption before reranking and the selected caption, plus the stored metrics. Next to each main-table file are `_cpu_eval.json` (CPU re-score with SPICE) and `_spice_per_caption.json`. `results/kaggle/SHA256SUMS` lists their checksums.
 
 ## 6. Reproducing the results
