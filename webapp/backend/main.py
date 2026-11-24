@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
         device=config.device,
     )
     # Real class names from the loaded checkpoint (not a hand-typed guess) drive the
-    # object-noun vocabulary FormulaReranker uses for S_belief/hallucination flagging --
+    # object-noun vocabulary FormulaReranker uses for S_det/hallucination flagging --
     # see vocab.set_object_noun_vocab. This also eagerly loads the YOLO model at startup instead
     # of on the first request.
     vocab.set_object_noun_vocab(engines.detector.class_names())

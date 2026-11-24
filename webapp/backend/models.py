@@ -136,7 +136,7 @@ class FormulaBreakdownOut(BaseModel):
 
     s_base: float
     s_align: float
-    s_belief: float
+    s_det: float
     s_obj: float | None = None
     s_retr: float | None = None
     formula_score: float | None = None

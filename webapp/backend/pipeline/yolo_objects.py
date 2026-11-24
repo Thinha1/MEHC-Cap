@@ -35,7 +35,7 @@ class YoloObjectExtractor:
 
     def class_names(self) -> set[str]:
         """The exact label set this checkpoint recognizes, read from the .pt file itself (not
-        hardcoded) -- used to build the object-noun vocabulary for S_belief/hallucination
+        hardcoded) -- used to build the object-noun vocabulary for S_det/hallucination
         flagging (see vocab.py) so it always matches whatever YOLO checkpoint is configured,
         with no separate class list to download or keep in sync."""
         model = self._load_model()

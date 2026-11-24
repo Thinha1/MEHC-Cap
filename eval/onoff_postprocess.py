@@ -1,8 +1,8 @@
 """Ghép 4 đoạn 1.250 ảnh của một cấu hình bật/tắt thành một báo cáo 5.000 ảnh rồi chấm bộ chọn lại câu năm tín hiệu.
 
-Chạy từ demo/ (mặc định chạy trên CPU để không chiếm GPU của các luồng sinh câu):
-    python research/scripts/onoff_postprocess.py --name cs_g3 --evidence union --spice
-    python research/scripts/onoff_postprocess.py --name e40_existing --merged results/e40_g3_yoloworld_merged.json
+Chạy từ thư mục gốc của repo (mặc định chạy trên CPU để không chiếm GPU của các luồng sinh câu):
+    python eval/onoff_postprocess.py --name cs_g3 --evidence union --spice
+    python eval/onoff_postprocess.py --name e40_existing --merged results/e40_g3_yoloworld_merged.json
 Kết quả: results/onoff/<name>_merged.json (nếu ghép) và results/onoff/<name>_eval.json
 """
 import argparse
@@ -13,10 +13,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEMO = Path(__file__).resolve().parents[2]
-CACHE = DEMO.parent / "dataset" / "retrieval_cache"
+ROOT = Path(__file__).resolve().parents[1]
+CACHE = ROOT / "dataset" / "retrieval_cache"
 # tất cả báo cáo cùng 5.000 ảnh kiểm tra theo cùng thứ tự nên dùng chung chỉ số láng giềng truy hồi
-NB_SOURCE = CACHE / "neighbours_e40_g3_yoloworld_merged_k5.npy"
+NB_SOURCE = CACHE / "neighbours_test_yoloworld_k5.npy"  # built in README step 3
 
 
 def main():
@@ -27,9 +27,9 @@ def main():
     ap.add_argument("--spice", action="store_true")
     ap.add_argument("--gpu", action="store_true", help="cho phép dùng GPU (mặc định CPU)")
     a = ap.parse_args()
-    out_dir = DEMO / "results" / "onoff"
+    out_dir = ROOT / "results" / "onoff"
     if a.merged:
-        report = a.merged if a.merged.is_absolute() else DEMO / a.merged
+        report = a.merged if a.merged.is_absolute() else ROOT / a.merged
     else:
         rows = []
         for start in (0, 1250, 2500, 3750):
@@ -50,7 +50,7 @@ def main():
            "--output", str(out_dir / f"{a.name}_eval.json"), "--thresholds", "3", "--evidence", a.evidence]
     if a.spice:
         cmd.append("--spice")
-    subprocess.run(cmd, check=True, cwd=DEMO, env=env)
+    subprocess.run(cmd, check=True, cwd=ROOT, env=env)
 
 
 if __name__ == "__main__":

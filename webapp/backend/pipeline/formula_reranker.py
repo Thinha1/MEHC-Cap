@@ -54,7 +54,7 @@ class FormulaReranker:
     """Deterministic composite reranker -- no network call, no LLM. Implements the S_total
     formula from "De xuat Co che Re-ranking Tong hop cho Mo hinh Sinh chu thich anh":
 
-        S_total(c) = alpha*S_base(c) + beta*S_align(c) + gamma*S_belief(c)
+        S_total(c) = alpha*S_base(c) + beta*S_align(c) + gamma*S_det(c)
 
     Each term is min-max normalized across the K candidates of the SAME image before combining
     (see _normalize) -- the three raw scores live on very different scales (log-prob, cosine
@@ -66,7 +66,7 @@ class FormulaReranker:
       (candidate.metadata["token_log_probs"], populated in generate.py). Candidates from a
       different source (no such metadata) get the neutral 0.5 for this term.
     - S_align: candidate.clip_score (raw cosine similarity, already computed).
-    - S_belief: Belief Revision score, following Sabir et al. (COLING 2022) -- see _s_belief.
+    - S_det: Belief Revision score, following Sabir et al. (COLING 2022) -- see _s_det.
     """
 
     def __init__(
@@ -87,9 +87,9 @@ class FormulaReranker:
                 self.beta / total,
                 self.gamma / total,
             )
-        # Used by _s_belief to compute sim(w, c) between a caption and a detected object's
+        # Used by _s_det to compute sim(w, c) between a caption and a detected object's
         # label (see ClipScorer.text_similarity). None means "no live CLIP model available" --
-        # _s_belief then relies entirely on a cached candidate.metadata["vc_sim"] and degrades
+        # _s_det then relies entirely on a cached candidate.metadata["vc_sim"] and degrades
         # to the neutral 0.5 for anything not already cached there.
         self.clip_scorer = clip_scorer
         # Informativeness assigned to the "absence" of an object the caption names but the
@@ -115,20 +115,20 @@ class FormulaReranker:
 
         base_raw, base_ok = self._s_base(candidates)
         align_raw = [c.clip_score if c.clip_score is not None else 0.0 for c in candidates]
-        belief_raw, belief_ok = zip(*(self._s_belief(c, objects) for c in candidates))
+        det_raw, det_ok = zip(*(self._s_det(c, objects) for c in candidates))
 
         s_base = _normalize(base_raw, base_ok)
         s_align = _normalize(align_raw)
-        s_belief = _normalize(list(belief_raw), list(belief_ok))
+        s_det = _normalize(list(det_raw), list(det_ok))
 
         scored: list[tuple[CaptionCandidate, float, FormulaBreakdown]] = []
         for i, candidate in enumerate(candidates):
             total = (
                 self.alpha * s_base[i]
                 + self.beta * s_align[i]
-                + self.gamma * s_belief[i]
+                + self.gamma * s_det[i]
             )
-            breakdown = FormulaBreakdown(s_base=s_base[i], s_align=s_align[i], s_belief=s_belief[i])
+            breakdown = FormulaBreakdown(s_base=s_base[i], s_align=s_align[i], s_det=s_det[i])
             scored.append((candidate, total, breakdown))
 
         scored.sort(key=lambda item: item[1], reverse=True)
@@ -145,7 +145,7 @@ class FormulaReranker:
         return RerankResult(
             ranked=ranked,
             hallucinations=heuristic_hallucinations(candidates, objects),
-            model_name="công thức ba tín hiệu (S_base, S_align, S_belief)",
+            model_name="công thức ba tín hiệu (S_base, S_align, S_det)",
             selected_caption=best.caption.text if best else None,
         )
 
@@ -163,7 +163,7 @@ class FormulaReranker:
                 ok.append(False)
         return raw, ok
 
-    def _s_belief(self, candidate: CaptionCandidate, objects: list[DetectedObject]) -> tuple[float, bool]:
+    def _s_det(self, candidate: CaptionCandidate, objects: list[DetectedObject]) -> tuple[float, bool]:
         """Belief Revision score, following Sabir et al., "Belief Revision based Caption
         Re-ranker with Visual Semantic Information" (COLING 2022, arXiv:2209.08163). The
         detected objects are treated as visual evidence that revises the caption's own

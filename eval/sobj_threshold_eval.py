@@ -2,8 +2,8 @@
 câu truy hồi nhắc tới (r = 1 là cấu hình đang dùng, tái lập số của signal_table.py; r = 3 là biến thể đa số).
 Trọng số giữ như cũ: w_obj = 1, w_retr = 0.1.
 
-Chạy (thư mục demo):
-    python research/scripts/sobj_threshold_eval.py --report results/e35_k6_yoloworld_merged.json \
+Chạy (thư mục gốc của repo):
+    python eval/sobj_threshold_eval.py --report results/e35_k6_yoloworld_merged.json \
         --output results/e35_k6_sobj_threshold_test.json
 """
 from __future__ import annotations
@@ -16,8 +16,8 @@ from pathlib import Path
 
 import numpy as np
 
-DEMO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(DEMO))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "core"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import chair_metric  # noqa: E402

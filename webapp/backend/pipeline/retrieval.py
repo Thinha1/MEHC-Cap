@@ -254,7 +254,7 @@ def apply_retrieval_signals(
     out = []
     for rank, i in enumerate(order, start=1):
         old = by_text[texts[i]]
-        breakdown = old.formula_breakdown or FormulaBreakdown(s_base=0.5, s_align=0.5, s_belief=0.5)
+        breakdown = old.formula_breakdown or FormulaBreakdown(s_base=0.5, s_align=0.5, s_det=0.5)
         breakdown = replace(breakdown, s_obj=float(n_obj[i]), s_retr=float(n_retr[i]), formula_score=float(base[i]))
         out.append(replace(old, rank=rank, rerank_score=float(final[i]), formula_breakdown=breakdown))
 

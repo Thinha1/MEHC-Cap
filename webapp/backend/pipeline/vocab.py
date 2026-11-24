@@ -28,7 +28,7 @@ _dynamic_object_nouns: set[str] | None = None
 
 def set_object_noun_vocab(class_names: set[str]) -> None:
     """Replace the object-noun vocabulary with the head noun of each given class name -- meant
-    to be called once at startup with YoloObjectExtractor.class_names(), so S_belief and
+    to be called once at startup with YoloObjectExtractor.class_names(), so S_det and
     hallucination flagging always match whatever YOLO checkpoint is actually configured instead
     of a hand-typed guess.
 

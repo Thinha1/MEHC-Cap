@@ -6,7 +6,7 @@ Quy trình mỗi ảnh (giống retrieval_logit_bias_experiment.py / sobj_thresh
   3. Bằng chứng E(I) = YOLO  U  {vật thể được >= r trong K câu truy hồi nhắc tới} (r = 3).
   4. Luật chặn cố định: z' = z - delta * 1[w là từ vật thể COCO, o(w) không thuộc E(I)] tại mỗi bước giải mã (delta = 0 là không chặn).
   5. Sinh 5 ứng viên (1 beam thường + diverse beam search), chấm CLIP ViT-B/16 và FormulaReranker (0,2 / 0,4 / 0,4).
-  6. Chọn lại câu: ba tín hiệu (S_base, S_align, S_belief) và năm tín hiệu (+ 1,0 x S_obj + 0,1 x S_retr, min-max theo ảnh).
+  6. Chọn lại câu: ba tín hiệu (S_base, S_align, S_det) và năm tín hiệu (+ 1,0 x S_obj + 0,1 x S_retr, min-max theo ảnh).
 
 Hai giai đoạn, để chia ảnh cho tối đa 2 tiến trình song song:
   run    sinh câu ứng viên cho một đoạn ảnh với một danh sách delta, lưu ra "mảnh" JSON (có thể --resume).
@@ -16,16 +16,16 @@ Hai giai đoạn, để chia ảnh cho tối đa 2 tiến trình song song:
 Khác COCO: Flickr30k không có COCO instances nên CHAIR dùng nhãn đúng rút từ 5 caption tham chiếu của ảnh (con số cao hơn, KHÔNG so
 trực tiếp với CHAIR trên COCO). Kho truy hồi là caption của tập train Flickr30k, không phải COCO.
 
-Ví dụ (từ demo/, Python có torch + transformers + ultralytics; Java cho METEOR):
+Ví dụ (từ thư mục gốc của repo, Python có torch + transformers + ultralytics; Java cho METEOR):
     # 1) chọn delta trên tập val (1.000 ảnh đầu, 2 mảnh chạy song song)
-    python research/scripts/flickr30k_eval.py run --split val --start 0   --max-images 500 --deltas 0 1 2 3 4 \\
+    python eval/flickr30k_eval.py run --split val --start 0   --max-images 500 --deltas 0 1 2 3 4 \\
         --checkpoint flickr30k_..._best_model.pth --vocab-file flickr30k_..._vocab.json --output results/f30k_val_part0.json
-    python research/scripts/flickr30k_eval.py run --split val --start 500 --max-images 500 --deltas 0 1 2 3 4 ... --output results/f30k_val_part500.json
-    python research/scripts/flickr30k_eval.py merge --parts results/f30k_val_part0.json results/f30k_val_part500.json \\
+    python eval/flickr30k_eval.py run --split val --start 500 --max-images 500 --deltas 0 1 2 3 4 ... --output results/f30k_val_part500.json
+    python eval/flickr30k_eval.py merge --parts results/f30k_val_part0.json results/f30k_val_part500.json \\
         --select --output results/f30k_val_eval.json
     # 2) chạy test với delta đã chọn (ví dụ 3) và delta = 0 để so
-    python research/scripts/flickr30k_eval.py run --split test --deltas 0 3 ... --output results/f30k_test_part0.json
-    python research/scripts/flickr30k_eval.py merge --parts results/f30k_test_part*.json --output results/f30k_test_eval.json
+    python eval/flickr30k_eval.py run --split test --deltas 0 3 ... --output results/f30k_test_part0.json
+    python eval/flickr30k_eval.py merge --parts results/f30k_test_part*.json --output results/f30k_test_eval.json
 """
 from __future__ import annotations
 
@@ -41,11 +41,11 @@ import numpy as np
 import torch
 
 HERE = Path(__file__).resolve().parent
-DEMO = HERE.parents[1]
-sys.path.insert(0, str(DEMO))
+ROOT = HERE.parent
+sys.path.insert(0, str(ROOT / "core"))
 sys.path.insert(0, str(HERE))
 
-DATASET = DEMO.parent / "dataset"
+DATASET = ROOT / "dataset"
 FLICKR = DATASET / "flickr30k"
 SPLIT_SIZES = (29000, 1014, 1000)   # train / val / test của Karpathy; dùng khi chỉ có file caption (chia ngẫu nhiên, giống notebook)
 SEED = 42
@@ -345,8 +345,8 @@ def main() -> None:
     r.add_argument("--karpathy-json", type=Path, default=FLICKR / "dataset_flickr30k.json")
     r.add_argument("--captions-file", type=Path, default=None, help="dự phòng nếu không có Karpathy json (phải khớp cách chia lúc train)")
     r.add_argument("--image-dir", type=Path, default=FLICKR / "images")
-    r.add_argument("--cache-dir", type=Path, default=DEMO / "results" / "flickr30k_cache")
-    r.add_argument("--yolo-model", type=Path, default=DEMO / "yolov8l-worldv2.pt")
+    r.add_argument("--cache-dir", type=Path, default=ROOT / "results" / "flickr30k_cache")
+    r.add_argument("--yolo-model", type=Path, default=Path("yolov8l-worldv2.pt"))
     r.add_argument("--conf", type=float, default=0.25)
     r.add_argument("--max-objects", type=int, default=20)
     r.add_argument("--k", type=int, default=5, help="số câu truy hồi")

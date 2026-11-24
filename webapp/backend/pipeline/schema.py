@@ -28,7 +28,7 @@ class FormulaBreakdown:
 
     s_base: float
     s_align: float
-    s_belief: float
+    s_det: float
     # Retrieval signals of the proposed method (pipeline/retrieval.py), min-max normalized
     # the same way; None when the job ran without the retrieval bank.
     s_obj: float | None = None

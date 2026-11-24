@@ -18,14 +18,14 @@ and without logit blocking, the CLIPScore of each candidate, the five reranking 
 | 2B. Caption retrieval | `POST /api/jobs/{id}/steps/retrieve` | The K = 5 nearest training captions (CLIP ViT-B/32) and the evidence set `E(I)` |
 | 3. Caption generation | `POST /api/jobs/{id}/steps/caption` | Up to 5 candidates, with logit blocking `z' = z - δ` on object words outside `E(I)` (δ = 0 turns it off) |
 | 4. Image-text match | `POST /api/jobs/{id}/steps/clipscore` | CLIPScore (CLIP ViT-B/16) of each candidate |
-| 5. Reranking and hallucination check | `POST /api/jobs/{id}/steps/rerank` | `S_base`, `S_align`, `S_belief`, `S_obj`, `S_retr` and the total score of each candidate |
+| 5. Reranking and hallucination check | `POST /api/jobs/{id}/steps/rerank` | `S_base`, `S_align`, `S_det`, `S_obj`, `S_retr` and the total score of each candidate |
 | 6. Final result | `GET /api/jobs/{id}/steps/final` | The selected caption |
 
 Step 3 needs 2A and 2B. Calling a step before the steps it depends on returns HTTP 409 with the missing steps. Running step 3
 again (for example with another model or δ) resets steps 4 to 6. Jobs are kept in memory, so they are lost when the server
 restarts. This is enough for a single-user demo.
 
-The reranker uses the same settings as the paper: weights `0.2 / 0.4 / 0.4` for `S_base / S_align / S_belief`, `w_obj = 1`,
+The reranker uses the same settings as the paper: weights `0.2 / 0.4 / 0.4` for `S_base / S_align / S_det`, `w_obj = 1`,
 `w_retr = 0.1`, `K = 5`, `r = 3`, and YOLO-World threshold 0.55 for the evidence set of `S_obj` only. They are set in
 `backend/pipeline/config.py`.
 

@@ -7,8 +7,8 @@ CIDEr, BLEU-4, không METEOR):
 - grid: lưới w_retr ∈ {0; 0,1; 0,2; 0,3} × w_obj ∈ {0; 0,5; 1; 2} với K = 5, r = --grid-thr.
 - table4: đủ chỉ số (có METEOR) cho ba tín hiệu / +0,1·S_retr / +1·S_obj / năm tín hiệu với K = 5, r = --grid-thr.
 
-Chạy (thư mục demo):
-    python research/scripts/sobj_threshold_val.py --report results/e35_k6_val_merged.json \
+Chạy (thư mục gốc của repo):
+    python eval/sobj_threshold_val.py --report results/e35_k6_val_merged.json \
         --output results/e35_k6_sobj_threshold_val.json
 """
 from __future__ import annotations
@@ -21,8 +21,8 @@ from pathlib import Path
 
 import numpy as np
 
-DEMO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(DEMO))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "core"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import chair_metric  # noqa: E402

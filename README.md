@@ -46,7 +46,7 @@ flowchart TD
     GEN --> BLOCK
     BLOCK --> BEAM["Beam search (3) + diverse beam search<br/>(10 beams, 5 groups)"]
     BEAM --> CAND["Up to 5 candidate captions"]
-    CAND --> RERANK["Five-signal reranking<br/>S = 0.2·S_base + 0.4·S_align + 0.4·S_belief<br/>+ 1·S_obj + 0.1·S_retr"]
+    CAND --> RERANK["Five-signal reranking<br/>S = 0.2·S_base + 0.4·S_align + 0.4·S_det<br/>+ 1·S_obj + 0.1·S_retr"]
     EV -. "S_obj (YOLO-World threshold 0.55)" .-> RERANK
     RET -. "S_retr" .-> RERANK
     RERANK --> OUT["Final caption"]
@@ -58,11 +58,11 @@ The five reranking signals (each min-max normalised within one image's candidate
 |---|---|
 | `S_base` | captioner confidence (mean token log-probability) |
 | `S_align` | image-text compatibility (CLIP ViT-B/16 cosine, CLIPScore style) |
-| `S_belief` | caption probability after belief revision with the detection results |
+| `S_det` | caption probability after belief revision with the detection results |
 | `S_obj` | minus the number of object classes in the caption that lie outside `E(I)` |
 | `S_retr` | closeness of the candidate to the retrieved captions |
 
-YOLO-World confidence threshold: the blocking rule and `S_belief` use 0.25, and only the evidence set of `S_obj` uses 0.55 (chosen on 1,000 validation images).
+YOLO-World confidence threshold: the blocking rule and `S_det` use 0.25, and only the evidence set of `S_obj` uses 0.55 (chosen on 1,000 validation images).
 
 ## 3. Results (Karpathy test sets)
 
@@ -107,7 +107,7 @@ MEHC-Cap is the full configuration **`DL+CL + LB(Y+R) + RR`**. MS COCO: 5,000 te
 
 **Inference cost (per image, RTX 3050 Laptop):** 1,855 ms for the full pipeline versus 357 ms for the baseline with one beam-search caption. Retrieval adds 52 ms, the two retrieval-based signals 38 ms, YOLO-World 111 ms, the reranker 197 ms.
 
-**On/off ablation (MS COCO, 5,000 images).** "Before"/"after" means before/after adding `RR`. CHAIRs and CHAIRi (%) are computed on 4,967 images, and recall is the % of objects named by the reference captions that the generated caption mentions. The evidence source feeds both the blocking rule and the `S_obj` signal, and the no-blocking rows use the union of both sources. δ = 3 was chosen on the validation split with the union source and kept for the other sources. SPICE was not measured. C1, C2 and C7 to C10 are mean ± sample standard deviation over seeds 41, 42, 43 (epoch-40 checkpoint of each), so C1 and C10 match the main table above. C3 to C6 are single runs of the Dynamic-Logits-only and contrastive-only generators and have no standard deviation.
+**On/off ablation (MS COCO, 5,000 images).** "Before"/"after" means before/after adding `RR`. CHAIRs and CHAIRi (%) are computed on 4,967 images, and recall is the % of objects named by the reference captions that the generated caption mentions. The evidence source feeds both the blocking rule and the `S_obj` signal, and the no-blocking rows use the union of both sources. δ = 3 was chosen on the validation split with the union source and kept for the other sources. SPICE was not measured. C1, C2 and C7 to C10 are mean ± sample standard deviation over seeds 41, 42, 43 (epoch-40 checkpoint of each), so C1 and C10 match the main table above. C3 to C6 are single runs of the Dynamic-Logits-only and contrastive-only generators (seed 42, epoch 40) and have no standard deviation.
 
 | # | Configuration | CHAIRs before | CIDEr before | CHAIRs after | CHAIRi after | CIDEr after | Recall after |
 |---|---|---|---|---|---|---|---|
@@ -128,77 +128,156 @@ Observations:
 - With blocking, Dynamic Logits only (C4, single run) gives CHAIRs 2.11 and contrastive only (C6, single run) 1.89, both above the combination (C10, 1.84 ± 0.14), C6 within one standard deviation of it.
 - YOLO-World-only (C8) or retrieval-only (C9) evidence gives lower CHAIRs (1.35 and 1.62), but CIDEr drops by 2.90 and 6.92 points against C10 and recall falls to 66.68% and 59.54%, i.e. the model mentions far fewer objects. The union source balances hallucination and caption quality, so it is the one used.
 
+
+**Seed scope of each result.** Every number above comes from one of these sources:
+
+| Result | Generator checkpoints | Images |
+|---|---|---|
+| Main table (MS COCO), reranking-signal table, on/off rows C1, C2, C7 to C10 | Seeds 41, 42, 43 of the baseline and of the proposed model, epoch 40 of each, mean ± sample std | 5,000 test images (CHAIR on 4,967) |
+| On/off rows C3 to C6 | One run: Dynamic-Logits-only and contrastive-only generators, seed 42, epoch 40 | 5,000 test images |
+| Choice of δ (blocking strength) and of the `S_obj` YOLO-World threshold (0.55) | Proposed model, seed 42, epoch 40 | First 1,000 validation images |
+| Flickr30k rows | One run of the baseline and of the proposed model | 1,000 test images |
+| Inference cost | Proposed model, seed 42, epoch 40 | Test images, RTX 3050 Laptop |
+
+`python eval/make_tables.py --dir results/kaggle` rebuilds the main table, the reranking-signal table and the three-seed on/off rows from the released result files (section 6), on CPU and without images or models.
+
 ## 4. Folder layout
 
 | Path | Role |
 |---|---|
-| `notebooks/01_baseline_clipvit-transformer-coco2014.ipynb` | Train the baseline (cross-entropy) for 40 epochs, with the same preprocessing, augmentation, label smoothing (0.1), gradient clipping (1.0) and early stopping (validation loss, patience 5) as notebook 02; the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`baseline_epoch40_seed{41,42,43}.pth`) |
-| `notebooks/02_train_proposed_dynlogits_contrastive_attnpool.ipynb` | Train the **proposed model** (Dynamic Logits + multi-positive contrastive learning + attention pooling) in two stages (see the first cell); the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`seed{41,42,43}_dynlogits_contrastive_attnpool_epoch40_model.pth`) |
-| `notebooks/03_flickr30k_train_baseline.ipynb`, `04_flickr30k_train_proposed.ipynb` | Train baseline and proposed model on Flickr30k; the baseline uses the same training settings as notebook 04 |
+| `requirements.txt` | Python packages for `core/` and `eval/` (the web app has its own `webapp/backend/requirements.txt`) |
+| `core/` | Shared modules imported by every script in `eval/`: captioner (`local_captioner.py`, `generate.py`), CLIPScore (`clipscore.py`), YOLO-World wrapper (`yolo_objects.py`), three-signal reranker (`formula_reranker.py`), metrics (`evaluate_reranked_quality.py`, `chair_metric.py` + `chair_synonyms.txt`), data classes (`schema.py`, `config.py`, `vocab.py`, `pipeline.py`) |
+| `notebooks/01_baseline_clipvit-transformer-coco2014.ipynb` | Train the baseline (cross-entropy) for 40 epochs; the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`baseline_epoch40_seed{41,42,43}.pth`) |
+| `notebooks/02_train_proposed_dynlogits_contrastive_attnpool.ipynb` | Train the **proposed generator** (Dynamic Logits + multi-positive contrastive learning + attention pooling); the first cell describes the exact schedule that produced the three reported checkpoints (`seed{41,42,43}_dynlogits_contrastive_attnpool_epoch40_model.pth`) |
+| `notebooks/03_flickr30k_train_baseline.ipynb`, `04_flickr30k_train_proposed.ipynb` | Train baseline and proposed model on Flickr30k |
 | `notebooks/eval/coco2014-eval-preranking.ipynb` | Evaluate captions before reranking (plain beam search) |
-| `notebooks/eval/coco2014-eval-reranking.ipynb` | Evaluate the full pipeline: candidate generation with the blocking rule, then reranking ([Kaggle](https://www.kaggle.com/code/nganhthnh/mehc-cap-eval-reranking)) |
-| `eval/build_yoloworld_report.py` | Build the YOLO-World object report (the evidence) for an evaluation split |
-| `eval/retrieval_logit_bias_experiment.py` | Generate captions with the blocking rule (`--configs 0,δ`), optional evidence source `--evidence union/yolo/retr` |
-| `eval/logit_bias_final_eval.py` | Merge shards and compute all metrics |
+| `notebooks/eval/coco2014-eval-reranking.ipynb` | Full pipeline on Kaggle: candidate generation with the blocking rule, then reranking; writes the three-seed result files |
+| `eval/build_yoloworld_report.py` | Create the evaluation report of a split with the YOLO-World objects (the detection evidence) |
+| `eval/build_retrieval_cache.py` | Encode the train + restval captions with CLIP ViT-B/32 and store the top-5 caption neighbours of every image |
+| `eval/retrieval_logit_bias_experiment.py` | Generate candidate captions with the blocking rule (`--configs 0,δ`), evidence source `--evidence union/yolo/retr` |
+| `eval/run_onoff_ablation.sh`, `onoff_postprocess.py` | Run a configuration on the 5,000 test images in 4 shards, then merge the shards and score the five-signal reranker |
+| `eval/rerank_only_test55.py`, `rerank_c55_rest.py` | Re-score already generated candidates with the 0.55 YOLO-World threshold for `S_obj` (no regeneration) |
 | `eval/sobj_threshold_eval.py`, `sobj_threshold_val.py` | Score the five-signal reranker (threshold r, evidence source, SPICE, object coverage) on test and val |
-| `eval/sretr_experiment.py`, `signal_table.py`, `rerank_with_new_objects.py` | `S_obj`/`S_retr` signals; three/five-signal table; reranking for the no-blocking configuration |
+| `eval/sretr_experiment.py`, `signal_table.py`, `rerank_with_new_objects.py` | `S_obj`/`S_retr` signals and the retrieval cache; signal table; reranking with a new object set |
+| `eval/logit_bias_final_eval.py` | Merge shards and compute all metrics for a blocking run |
+| `eval/eval_notebook_json.py`, `spice_per_caption.py` | Re-score a Kaggle result file on CPU and add SPICE (writes `<file>_cpu_eval.json`) |
+| `eval/make_tables.py` | Rebuild the three-seed tables of section 3 from the result files |
 | `eval/flickr30k_eval.py` | Flickr30k evaluation (logit blocking + reranking) |
-| `eval/run_onoff_ablation.sh`, `onoff_postprocess.py` | On/off component experiments (see section 6) |
+| `logs/clean_env_check.log` | Run of the instructions below in a fresh virtual environment (install, every script's `--help`, step 0, a CPU re-score and a 5-image smoke test of steps 2 to 4) |
 | `webapp/` | Demo app (FastAPI + Next.js) that runs the pipeline step by step; see `webapp/README.md` |
 | `papers/` | The 47 references of the paper, with DOI or paper links; see `papers/README.md` |
 | `references.bib` | BibTeX of the 47 references, keys `ref1` to `ref47` in order of first citation |
 
-## 5. Setup and data
+## 5. Setup, data and checkpoints
 
-- Python 3.10, `pip install -r requirements.txt` (in the `demo/` root), PyTorch with CUDA, Java (for METEOR and SPICE).
-- Data lives in `../dataset/` (outside the repo): `dataset_coco.json` (Karpathy split), `instances_val2014.json`, `val2014/val2014/` (images), `retrieval_cache/` (caption store and neighbour indices), vocabulary `coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json` (10,031 words).
-- Checkpoints (`*.pth`, about 500 MB each); the models are in `webapp/backend/weights/`. Training ran on Kaggle (T4), evaluation ran locally.
-- The constants in notebooks 01, 02, 03 and 04 are set to the reported configuration (3-layer decoder, batch 64 for COCO).
+All commands run from the repository root.
 
-## 6. Re-running the evaluation
+```
+python -m venv .venv          # Python 3.10
+.venv\Scripts\activate        # Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-**Three-seed results (Kaggle).** The MS COCO numbers for `CE`, `CE + RR`, `DL+CL + LB(Y+R)` and MEHC-Cap come from `notebooks/eval/coco2014-eval-reranking.ipynb` ([Kaggle notebook](https://www.kaggle.com/code/nganhthnh/mehc-cap-eval-reranking)), run once per checkpoint (seeds 41, 42, 43 of the baseline and of the proposed model) with `RUN_BOTH = True`, which writes one JSON for δ = 0 and one for δ = 3. The on/off rows C1, C2 and C7 to C10 average the same three runs per seed, with recall recomputed from the selected captions. C8 and C9 use `RUN_BOTH = False` and `EVIDENCE_SOURCES = ["yolo", "retr"]`. SPICE was added afterwards on CPU from those JSON files (`research/scripts/eval_notebook_json.py --spice` at the `demo/` root).
+Install the CUDA build of PyTorch first if you have a GPU (see the comment at the top of `requirements.txt`). METEOR needs Java on `PATH`, SPICE needs Java 8. The CLIP models (`openai/clip-vit-base-patch16`, `openai/clip-vit-base-patch32`) are downloaded from Hugging Face, and `yolov8l-worldv2.pt` is downloaded by Ultralytics, on first use.
 
-**Local scripts (from `demo/`)**, used for the single-run rows C3 to C6:
+**Data.** Download the files below and place them as shown (the folders `dataset/`, `checkpoints/` and `results/` are not tracked by git):
 
-1. **YOLO-World evidence** for the evaluation split:
+| File | Source |
+|---|---|
+| `dataset/val2014/*.jpg` | MS COCO 2014 validation images, <https://cocodataset.org/#download> (`val2014.zip`); the Karpathy val and test images are all in val2014 |
+| `dataset/instances_val2014.json` | MS COCO 2014 annotations (`annotations_trainval2014.zip`), used as CHAIR ground truth |
+| `dataset/dataset_coco.json` | Karpathy split of MS COCO (`caption_datasets.zip` from <https://cs.stanford.edu/people/karpathy/deepimagesent/>) |
+| `dataset/flickr30k/dataset_flickr30k.json`, `dataset/flickr30k/images/` | Karpathy split of Flickr30k (same zip) and the Flickr30k images (<https://shannon.cs.illinois.edu/DenotationGraph/>), only for `eval/flickr30k_eval.py` |
+| `dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json` | Vocabulary (10,031 words), written by notebook 02 and included in the release below |
 
-   ```
-   python MEHC-Cap/eval/build_yoloworld_report.py --report results/test_report.json --output results/test_yoloworld.json
-   ```
+The training notebooks read `train2014/` and `val2014/` images, `dataset_coco.json` and the `instances_*2014.json` files from Kaggle inputs; set the paths in their configuration cell.
 
-2. **Choose δ on the first 1,000 val images** (this sweep was run once with an earlier checkpoint and has not been repeated with the final one; pick the δ with the lowest CHAIRs after reranking whose CIDEr is not more than 1 point below the no-blocking case):
+```
+dataset/
+  dataset_coco.json
+  instances_val2014.json
+  coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json
+  val2014/COCO_val2014_000000000042.jpg ...
+  retrieval_cache/          # written by eval/build_retrieval_cache.py
+  flickr30k/                # optional
+checkpoints/                # *.pth from the release
+results/                    # outputs; results/kaggle/ holds the released result files
+```
 
-   ```
-   python MEHC-Cap/eval/retrieval_logit_bias_experiment.py --report results/val1000_yoloworld.json --max-images 1000 --checkpoint seed42_dynlogits_contrastive_attnpool_epoch40_model.pth --vocab-file ../dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json --configs 0,0 0,1 0,2 0,3 0,4 --output results/ksweep_val1000.json
-   ```
+**Checkpoints and released results.** All checkpoints store the training seed and epoch (`ckpt["seed"]`, `ckpt["epoch"]`, 0-based) next to the weights. Download links: `<ANONYMOUS_LINK>`.
 
-3. **Generate on test** with δ = 3, in 4 shards so an interrupted run loses nothing (`--save-rows` keeps the candidates for step 4):
+| File (put in `checkpoints/`) | Model | Seed | Epoch | SHA-256 |
+|---|---|---|---|---|
+| `seed41_dynlogits_contrastive_attnpool_epoch40_model.pth` | Proposed generator (`DL+CL`) | 41 | 40 | `ff69eaddde11682b6533bb5df055f43ecc6833834f49d59287fde59667778f1d` |
+| `seed42_dynlogits_contrastive_attnpool_epoch40_model.pth` | Proposed generator (`DL+CL`) | 42 | 40 | `4716f60884cccaf0f6d5ae780fa8af3800a73cbdd3c747daf9452e5c3508ff3c` |
+| `seed43_dynlogits_contrastive_attnpool_epoch40_model.pth` | Proposed generator (`DL+CL`) | 43 | 40 | `ce58dedce5a1fdd5bb27d633efba1f44c0602174bf568036a74ebdf138cedc25` |
+| `baseline_epoch40_seed41.pth` | Baseline (`CE`) | 41 | 40 | `<SHA256>` |
+| `baseline_epoch40_seed42.pth` | Baseline (`CE`) | 42 | 40 | `<SHA256>` |
+| `baseline_epoch40_seed43.pth` | Baseline (`CE`) | 43 | 40 | `<SHA256>` |
+| `seed42_dynlogits_epoch40_model.pth` | Dynamic Logits only (`DL`) | 42 | 40 | `<SHA256>` |
+| `seed42_contrastive_attnpool_epoch40_model.pth` | Contrastive learning only (`CL`) | 42 | 40 | `<SHA256>` |
 
-   ```
-   python MEHC-Cap/eval/retrieval_logit_bias_experiment.py --report results/test_yoloworld.json --start 0 --max-images 1250 --maj 3 --save-rows --checkpoint seed42_dynlogits_contrastive_attnpool_epoch40_model.pth --vocab-file ../dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json --configs 0,3 --output results/g3_test_part0.json
-   ```
+Check a download with `sha256sum checkpoints/*.pth` (Windows: `certutil -hashfile <file> SHA256`).
 
-   Repeat with `--start 1250`, `2500`, `3750`.
+The release also contains `results/kaggle/`: for every checkpoint and setting of the main and on/off tables (18 runs), the result file of `notebooks/eval/coco2014-eval-reranking.ipynb` with, per test image, the YOLO-World objects, the retrieved neighbours, the evidence set, all candidate captions, their reranking scores (`S_base`, `S_align`, `S_det` and the total), the caption before reranking and the selected caption, plus the stored metrics. Next to each main-table file are `_cpu_eval.json` (CPU re-score with SPICE) and `_spice_per_caption.json`. `results/kaggle/SHA256SUMS` lists their checksums.
 
-4. **Score the five-signal reranker** (with SPICE and object coverage). `--report` is the 5,000-image report with the shards merged (see the merge step in `eval/onoff_postprocess.py`):
+## 6. Reproducing the results
 
-   ```
-   python MEHC-Cap/eval/sobj_threshold_eval.py --report results/g3_yoloworld_merged.json --output results/g3_sobj_threshold_test.json --thresholds 3 --spice
-   ```
+The full flow is: prepare the data, train, generate candidates, rerank, compute the metrics, build the tables. Steps 2 to 5 need a GPU (we used a Kaggle T4 for training and an RTX 3050 Laptop for local evaluation). Keep at most 2 GPU processes at a time.
 
-   The key `five_score_3of5` in the output is the final configuration; `before_rerank` is the first beam-search caption.
+`logs/clean_env_check.log` shows these steps run in a fresh virtual environment on CPU (steps 2 to 4 on 5 test images).
 
-   The 0.55 threshold for `S_obj` only changes the reranking step, so it is applied by re-scoring the candidates already generated, with no regeneration: `research/scripts/rerank_only_test55.py` (proposed model) and `research/scripts/rerank_c55_rest.py <config name>` (on/off configurations) at the `demo/` root, results in `results/confsweep/rr55/`.
+**Step 0. Tables from the released files (CPU only).**
 
-5. **On/off experiments** (two parallel GPU workers, each running its 1,250-image shards in turn and skipping finished ones):
+```
+python eval/make_tables.py --dir results/kaggle
+```
 
-   ```
-   bash MEHC-Cap/eval/run_onoff_ablation.sh A
-   bash MEHC-Cap/eval/run_onoff_ablation.sh B
-   python MEHC-Cap/eval/onoff_postprocess.py --name cs_g3 --evidence union --spice
-   ```
+**Step 1. Train** on Kaggle (T4): notebook 01 for the baseline and notebook 02 for the proposed generator, once per `SEED` in 41, 42, 43, then keep the epoch-40 checkpoint (the `_epoch40_` file, not `_best_model`). Notebook 02 also writes the vocabulary file. The Dynamic-Logits-only and contrastive-only generators (C3 to C6) are notebook 02 with `SEED = 42` and `USE_CONTRASTIVE_LOSS = False` (DL only) or `TRAIN_DECODER_INTERCEPT = False` (CL only). Their Kaggle runs used `EPOCHS = 50` (DL only) and `EPOCHS = 45` (CL only, resumed after epoch 37 with `RESUME_PEAK_LR = 5e-5`), so their learning-rate schedules differ from the proposed generator's; the epoch-40 checkpoint of each is evaluated.
 
-   Configuration names and meaning are listed at the top of `run_onoff_ablation.sh`. Keep at most 2 GPU processes at a time.
+**Step 2. Evaluation reports, YOLO-World evidence and retrieval cache** for the test split and for the first 1,000 validation images:
 
-Final MEHC-Cap settings: YOLO-World threshold 0.25 (at most 20 objects) for the blocking rule and `S_belief`, 0.55 for the evidence set of `S_obj`, `K = 5`, `r = 3`, `δ = 3`, `J = 5` candidates, weights `w_base/w_align/w_belief/w_obj/w_retr = 0.2/0.4/0.4/1/0.1`, `ε = 10⁻⁶`.
+```
+python eval/build_yoloworld_report.py --split test --output results/test_yoloworld.json
+python eval/build_yoloworld_report.py --split val --max-rows 1000 --output results/val1000_yoloworld.json
+python eval/build_retrieval_cache.py --report results/test_yoloworld.json
+python eval/build_retrieval_cache.py --report results/val1000_yoloworld.json
+```
+
+The first `build_retrieval_cache.py` call also encodes the 566,747 train + restval captions once (`dataset/retrieval_cache/train_captions.json`, `train_caption_emb_b32.npy`).
+
+**Step 3. Choose δ on validation** (seed-42 epoch-40 proposed checkpoint, first 1,000 val images). Pick the δ with the lowest CHAIRs after reranking whose CIDEr is not more than 1 point below the no-blocking case; this gives δ = 3:
+
+```
+python eval/retrieval_logit_bias_experiment.py --report results/val1000_yoloworld.json --max-images 1000 --maj 3 --checkpoint checkpoints/seed42_dynlogits_contrastive_attnpool_epoch40_model.pth --vocab-file dataset/coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json --configs 0,0 0,1 0,2 0,3 0,4 --output results/ksweep_val1000.json
+```
+
+**Step 4. Generate candidates on test, rerank and score.** Three-seed rows: run `notebooks/eval/coco2014-eval-reranking.ipynb` on Kaggle once per checkpoint (six checkpoints) with `RUN_BOTH = True`, which writes one file for δ = 0 and one for δ = 3; for C8 and C9 use `RUN_BOTH = False` and `EVIDENCE_SOURCES = ["yolo", "retr"]` with the three proposed checkpoints. Copy the files to `results/kaggle/` and add SPICE on CPU:
+
+```
+python eval/eval_notebook_json.py results/kaggle/eval_rerank_*_test.json --spice
+python eval/make_tables.py --dir results/kaggle
+```
+
+The same steps run locally, one configuration at a time, with `eval/run_onoff_ablation.sh` (4 shards of 1,250 images, finished shards are skipped). Set `PY`, `E40`, `BASE`, `DL`, `CL` to change the Python interpreter or a checkpoint:
+
+```
+bash eval/run_onoff_ablation.sh P    # proposed generator, δ = 3 (e40_g3), the final configuration
+bash eval/run_onoff_ablation.sh C    # DL only, δ = 0 and 3 (C3, C4)
+bash eval/run_onoff_ablation.sh D    # CL only, δ = 0 and 3 (C5, C6)
+python eval/onoff_postprocess.py --name e40_g3 --evidence union --spice
+python eval/onoff_postprocess.py --name dl_g0 --evidence union
+```
+
+`onoff_postprocess.py` merges the shards into `results/onoff/<name>_merged.json` and scores the reranker with `S_obj` evidence at the generation threshold. The reported numbers use the 0.55 threshold for `S_obj`, which only changes the reranking step, so the candidates are re-scored without regeneration:
+
+```
+python eval/rerank_only_test55.py test         # proposed model: all reranker variants, SPICE for the five-signal one
+python eval/rerank_c55_rest.py dl_g0           # same for an on/off configuration (cs_g0, e40_g0, e40_yolo, cl_g0, cl_g3, dl_g0, dl_g3, signals)
+```
+
+Results go to `results/confsweep/rr55/`; the key `five_score_3of5` is the final MEHC-Cap configuration and `before_rerank` is the first beam-search caption.
+
+**Step 5. Flickr30k** (`eval/flickr30k_eval.py`, see its docstring): choose δ on the validation split with `run --split val` and `merge --select`, then run the test split once.
+
+Final MEHC-Cap settings: YOLO-World threshold 0.25 (at most 20 objects) for the blocking rule and `S_det`, 0.55 for the evidence set of `S_obj`, `K = 5`, `r = 3`, `δ = 3`, `J = 5` candidates, weights `w_base/w_align/w_det/w_obj/w_retr = 0.2/0.4/0.4/1/0.1`, `ε = 10⁻⁶`.

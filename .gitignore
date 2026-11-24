@@ -1,1 +1,6 @@
 webapp/CLAUDE.md
+__pycache__/
+.venv/
+dataset/
+checkpoints/
+results/

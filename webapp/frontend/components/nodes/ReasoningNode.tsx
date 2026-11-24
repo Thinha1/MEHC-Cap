@@ -7,12 +7,12 @@ import { usePipelineStore } from "@/lib/store";
 import type { FormulaBreakdownOut, HallucinationOut } from "@/lib/types";
 import { useShallow } from "zustand/react/shallow";
 
-type SignalKey = "s_base" | "s_align" | "s_belief" | "s_obj" | "s_retr";
+type SignalKey = "s_base" | "s_align" | "s_det" | "s_obj" | "s_retr";
 
 const BREAKDOWN_TERMS: { key: SignalKey; label: string; hint: string }[] = [
   { key: "s_base", label: "Base", hint: "độ tin cậy của mô hình sinh" },
   { key: "s_align", label: "Align", hint: "CLIPScore ảnh - câu" },
-  { key: "s_belief", label: "Belief", hint: "belief revision theo YOLO" },
+  { key: "s_det", label: "Det", hint: "belief revision theo YOLO" },
   { key: "s_obj", label: "Obj", hint: "phạt vật thể ngoài bằng chứng E(I)" },
   { key: "s_retr", label: "Retr", hint: "giống các câu truy hồi" },
 ];
@@ -96,7 +96,7 @@ export default function ReasoningNode({ selected }: { selected?: boolean }) {
     >
       <div className="space-y-3">
         <p className="text-[10px] text-gray-400">
-          S_base (độ tin cậy của mô hình), S_align (CLIPScore), S_belief (belief revision theo YOLO), S_obj (phạt vật
+          S_base (độ tin cậy của mô hình), S_align (CLIPScore), S_det (belief revision theo YOLO), S_obj (phạt vật
           thể ngoài bằng chứng E(I)) và S_retr (giống các câu truy hồi), chuẩn hoá min-max trong từng ảnh.
         </p>
 

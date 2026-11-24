@@ -2,11 +2,11 @@
 
 Chỉ đúng cho cấu hình KHÔNG chặn logits (YOLO không ảnh hưởng lúc sinh câu). Đọc một file part của
 retrieval_logit_bias_experiment.py --save-rows, thay "objects" của mỗi ảnh bằng vật thể trong --objects-report,
-chạy lại bộ chọn lại câu công thức (S_base, S_align, S_belief; S_belief cần độ tương đồng CLIP giữa câu và
+chạy lại bộ chọn lại câu công thức (S_base, S_align, S_det; S_det cần độ tương đồng CLIP giữa câu và
 nhãn vật thể mới, tính bằng ClipScorer ViT-B/16 như lúc sinh) rồi ghi part mới cùng định dạng, để
 logit_bias_final_eval.py tính rerank cũ, rerank mới và các chỉ số.
 
-Chạy: python research/scripts/evgate/rerank_with_new_objects.py --part results/A_part.json \
+Chạy: python eval/rerank_with_new_objects.py --part results/A_part.json \
           --objects-report results/X_yoloworld.json --output results/A_yoloworld_part.json
 """
 from __future__ import annotations
@@ -18,13 +18,12 @@ import sys
 import time
 from pathlib import Path
 
-DEMO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(DEMO))
-sys.path.insert(0, str(DEMO / "research" / "scripts"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "core"))
 
 import vocab as vocab_mod  # noqa: E402
 from clipscore import ClipScorer  # noqa: E402
-from llm import CaptionReranker  # noqa: E402
+from formula_reranker import FormulaReranker  # noqa: E402
 from retrieval_logit_bias_experiment import CACHE  # noqa: E402
 from schema import CaptionCandidate, DetectedObject  # noqa: E402
 
@@ -34,7 +33,7 @@ def main() -> None:
     ap.add_argument("--part", type=Path, required=True)
     ap.add_argument("--objects-report", type=Path, required=True)
     ap.add_argument("--output", type=Path, required=True)
-    ap.add_argument("--neighbours-from", type=Path, default=DEMO / "results" / "seed43_restval_e10_rerank_test.json",
+    ap.add_argument("--neighbours-from", type=Path, default=ROOT / "results" / "seed43_restval_e10_rerank_test.json",
                     help="report có cache láng giềng cùng thứ tự ảnh")
     args = ap.parse_args()
 
@@ -44,7 +43,7 @@ def main() -> None:
     new_objects = {r["image"]: r["objects"] for r in obj_data["rows"]}
     vocab_mod.set_object_noun_vocab(set(obj_data["yolo_classes"]))
 
-    reranker = CaptionReranker(provider="formula", clip_scorer=ClipScorer(model_name="openai/clip-vit-base-patch16"))
+    reranker = FormulaReranker(clip_scorer=ClipScorer(model_name="openai/clip-vit-base-patch16"))
     t0, changed = time.time(), 0
     for i, row in enumerate(run["rows"]):
         row["objects"] = new_objects[row["image"]]

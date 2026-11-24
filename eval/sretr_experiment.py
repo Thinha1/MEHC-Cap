@@ -9,15 +9,15 @@ new_score(c) = rerank_score(c) + lam * minmax_in_image(S)
 
 Equal-weight variants rebuild the linear formula from the per-candidate terms stored in the
 report's `reason` string (already min-max normalised per image by FormulaReranker):
-    eq3      = (S_base + S_align + S_belief) / 3
-    eq4_retr = (S_base + S_align + S_belief + minmax(S_retr)) / 4
-    eq4_obj  = (S_base + S_align + S_belief + minmax(S_obj)) / 4
+    eq3      = (S_base + S_align + S_det) / 3
+    eq4_retr = (S_base + S_align + S_det + minmax(S_retr)) / 4
+    eq4_obj  = (S_base + S_align + S_det + minmax(S_obj)) / 4
 
 Exploratory: lam and K are swept directly on the test report (no val tuning yet), to see whether
 the signal moves CHAIR/CIDEr at all before a proper weight search.
 
-Usage (from demo/, a Python with torch + transformers):
-    python research/scripts/sretr_experiment.py \
+Usage (from the repo root, a Python with torch + transformers):
+    python eval/sretr_experiment.py \
         --val-report results/reranked_quality_report_dynamic_logits_only_val.json \
         --test-report results/reranked_quality_report_dynamic_logits_only_test.json \
         --extra-test-report results/eval_fixloss_dynamiclogits_rerank_test_belief_penalty.json \
@@ -37,13 +37,13 @@ import numpy as np
 import torch
 from PIL import Image
 
-DEMO_DIR = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(DEMO_DIR))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "core"))
 
 import chair_metric  # noqa: E402
 from evaluate_reranked_quality import compute_metrics  # noqa: E402
 
-DATASET_DIR = DEMO_DIR.parent / "dataset"
+DATASET_DIR = ROOT / "dataset"
 CACHE_DIR = DATASET_DIR / "retrieval_cache"
 MODEL_NAME = "openai/clip-vit-base-patch32"
 LAMBDAS = [0.1, 0.2, 0.3, 0.5, 1.0]
@@ -102,7 +102,7 @@ def neighbours(clip: Clip, rows: list[dict], corpus_emb: np.ndarray, tag: str, k
     f = CACHE_DIR / f"neighbours_{tag}_k{kmax}.npy"
     if f.is_file():
         return np.load(f)
-    paths = [DATASET_DIR / "val2014" / "val2014" / r["image"] for r in rows]
+    paths = [DATASET_DIR / "val2014" / r["image"] for r in rows]
     log(f"encode {len(paths)} images ({tag})")
     img = torch.from_numpy(clip.images(paths)).to(clip.device)
     cor = torch.from_numpy(corpus_emb).to(clip.device)
@@ -133,7 +133,7 @@ def scores_for_report(clip, rows, nb_idx, caps, corpus_emb, objects, inv):
         reasons = {x["caption"]: x.get("reason", "") for x in r["ranking"]}
         terms = np.array(
             [[float(m.group(1)) if (m := re.search(rf"{n}=([0-9.]+)", reasons.get(t, ""))) else 0.5
-              for n in ("S_base", "S_align", "S_belief")] for t in cands],
+              for n in ("S_base", "S_align", "S_(?:det|belief)")] for t in cands],  # reports written before the rename call this term belief
             dtype=np.float64,
         )
         ce = np.stack([emb[t] for t in cands]).astype(np.float32)

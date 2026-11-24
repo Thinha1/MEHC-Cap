@@ -86,7 +86,7 @@ class RetrievalConfig:
 
 @dataclass
 class FormulaConfig:
-    # Weights chosen on the validation split (S_base / S_align / S_belief).
+    # Weights chosen on the validation split (S_base / S_align / S_det).
     alpha: float = 0.2
     beta: float = 0.4
     gamma: float = 0.4

@@ -1,7 +1,7 @@
 """Bảng "hai tín hiệu mới" (ba điểm, +S_retr, +S_obj, cả hai) từ một report/part đã lưu, đủ BLEU-1..4, METEOR,
 ROUGE-L, CIDEr, CHAIRs, CHAIRi trên tập kiểm tra.
 
-Chạy: python research/scripts/evgate/signal_table.py --report results/X_part.json --output results/X_signals.json
+Chạy: python eval/signal_table.py --report results/X_part.json --output results/X_signals.json
 """
 from __future__ import annotations
 
@@ -13,9 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
-DEMO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(DEMO))
-sys.path.insert(0, str(DEMO / "research" / "scripts"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "core"))
 
 import chair_metric  # noqa: E402
 import sretr_experiment as se  # noqa: E402
@@ -26,7 +25,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--report", type=Path, required=True, help="report ('rows') hoặc part ('runs' có 'rows')")
     ap.add_argument("--output", type=Path, required=True)
-    ap.add_argument("--neighbours-from", type=Path, default=DEMO / "results" / "seed43_restval_e10_rerank_test.json")
+    ap.add_argument("--neighbours-from", type=Path, default=ROOT / "results" / "seed43_restval_e10_rerank_test.json")
     ap.add_argument("--retr-weights", type=float, nargs="*", default=[],
                     help="thêm các dòng +λ_retr·S_retr và năm điểm (λ_retr, 1) với các λ_retr này")
     args = ap.parse_args()

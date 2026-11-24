@@ -1,0 +1,14 @@
+# Evaluation scripts (eval/) and core modules (core/). Python 3.10.
+# Install PyTorch for your CUDA version first if needed, e.g.
+#   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu121
+# METEOR needs Java on PATH; SPICE needs Java 8.
+torch==2.5.1
+torchvision==0.20.1
+transformers==4.46.1
+ultralytics==8.4.34
+pycocoevalcap==1.2
+nltk==3.9.1
+numpy==2.2.6
+pillow==11.3.0
+tqdm==4.67.3
+python-dotenv==1.2.1

@@ -116,7 +116,7 @@ def _rerank_out(job: JobState) -> RerankStepResponse:
             breakdown = FormulaBreakdownOut(
                 s_base=fb.s_base,
                 s_align=fb.s_align,
-                s_belief=fb.s_belief,
+                s_det=fb.s_det,
                 s_obj=fb.s_obj,
                 s_retr=fb.s_retr,
                 formula_score=fb.formula_score,
@@ -483,7 +483,7 @@ def run_rerank_step(job_id: str) -> RerankStepResponse:
                 ranked=ranked,
                 hallucinations=flags,
                 selected_caption=ranked[0].caption.text,
-                model_name="công thức năm tín hiệu (S_base, S_align, S_belief, S_obj, S_retr)",
+                model_name="công thức năm tín hiệu (S_base, S_align, S_det, S_obj, S_retr)",
             )
         job.rerank_result = result
         latency = (time.perf_counter() - start) * 1000

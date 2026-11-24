@@ -120,7 +120,7 @@ export interface ClipScoreStepResponse {
 export interface FormulaBreakdownOut {
   s_base: number;
   s_align: number;
-  s_belief: number;
+  s_det: number;
   // Retrieval signals of the proposed method; null when the job ran without them.
   s_obj: number | null;
   s_retr: number | null;

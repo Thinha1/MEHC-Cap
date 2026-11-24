@@ -105,7 +105,7 @@ class ClipScorer:
 
     def text_similarity(self, text_a: str, text_b: str) -> float:
         """Cosine similarity between two texts' CLIP text-encoder embeddings -- used as the
-        sim(w, c) term of FormulaReranker's belief-revision S_belief (see formula_reranker.py).
+        sim(w, c) term of FormulaReranker's belief-revision S_det (see formula_reranker.py).
         Reuses the same CLIP model already loaded for image-text scoring above instead of
         loading a second embedding model (the original paper uses SBERT-STS for this)."""
         a = self._text_embedding(text_a)

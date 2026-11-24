@@ -12,8 +12,8 @@ Everything else is the stock pipeline (CandidateCaptionGenerator -> ClipScorer -
 reranker), with YOLO objects and retrieval neighbours reused from an existing --run-pipeline
 report so the only change is the bias. beta = gamma = 0 must reproduce the report exactly.
 
-Usage (from demo/, Python with torch + transformers):
-    python research/scripts/retrieval_logit_bias_experiment.py \
+Usage (from the repo root, Python with torch + transformers):
+    python eval/retrieval_logit_bias_experiment.py \
         --report results/proposed_rerank_val.json --max-images 1000 \
         --configs 0,0 0,1 0,2 0,4 1,2 --output results/retrieval_logit_bias_val1000.json
 """
@@ -29,8 +29,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-DEMO = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(DEMO))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "core"))
 
 import chair_metric  # noqa: E402
 import local_captioner  # noqa: E402
@@ -38,12 +38,12 @@ import vocab as vocab_mod  # noqa: E402
 from clipscore import ClipScorer  # noqa: E402
 from evaluate_reranked_quality import compute_metrics  # noqa: E402
 from generate import CandidateCaptionGenerator  # noqa: E402
-from llm import CaptionReranker  # noqa: E402
+from formula_reranker import FormulaReranker  # noqa: E402
 from schema import DetectedObject  # noqa: E402
 
-DATASET = DEMO.parent / "dataset"
+DATASET = ROOT / "dataset"
 CACHE = DATASET / "retrieval_cache"
-IMAGE_DIR = DATASET / "val2014" / "val2014"
+IMAGE_DIR = DATASET / "val2014"
 IRREGULAR = {"men": "man", "women": "woman", "kids": "kid", "guys": "guy", "mice": "mouse"}
 
 # Bias added to the logits of every decode_step; set per image before generation.
@@ -80,8 +80,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--report", type=Path, required=True)
     ap.add_argument("--neighbours", type=Path)
-    ap.add_argument("--checkpoint", default=str(DEMO / "dynlogits_contrastive_attnpool_best_model.pth"))
-    ap.add_argument("--vocab-file", default=str(DATASET / "coco2014_karpathy_baseline_vocab.json"))
+    ap.add_argument("--checkpoint", default=str(ROOT / "checkpoints" / "seed42_dynlogits_contrastive_attnpool_epoch40_model.pth"))
+    ap.add_argument("--vocab-file", default=str(DATASET / "coco2014_karpathy_restval_dynlogits_contrastive_attnpool_vocab.json"))
     ap.add_argument("--start", type=int, default=0, help="first row (for sharding)")
     ap.add_argument("--max-images", type=int, default=1000)
     ap.add_argument("--maj", type=int, default=3, help="neighbours (of 5) that must name an object")
@@ -110,7 +110,7 @@ def main() -> None:
         max_candidates=5, num_beams=10, num_beam_groups=5, diversity_penalty=0.8, max_new_tokens=40, safe_beam_size=3,
     )
     clip = ClipScorer(model_name="openai/clip-vit-base-patch16")
-    reranker = CaptionReranker(provider="formula", clip_scorer=clip)
+    reranker = FormulaReranker(clip_scorer=clip)
     vocab = json.loads(Path(args.vocab_file).read_text(encoding="utf-8"))
     tok2obj = vocab_object_map(vocab, objects_set, inv)
     obj_tok_ids = torch.tensor(sorted(tok2obj), dtype=torch.long)
@@ -161,8 +161,9 @@ def main() -> None:
 
     results = {"report": str(args.report), "start": args.start, "images": len(rows), "maj": args.maj, "evidence": args.evidence, "runs": []}
     # Reference: the report's own captions on the same images (no bias, generated earlier).
-    results["runs"].append({"config": "report", **evaluate([r["baseline_candidate"] for r in rows], [r["caption"] for r in rows])})
-    log(f"report reference: {results['runs'][-1]}")
+    if rows[0].get("caption"):  # reports built with build_yoloworld_report.py --split have no captions yet
+        results["runs"].append({"config": "report", **evaluate([r["baseline_candidate"] for r in rows], [r["caption"] for r in rows])})
+        log(f"report reference: {results['runs'][-1]}")
 
     if args.configs is None:
         args.configs = ["0,0", "0,1", "0,2", "0,4", "1,2"]
@@ -184,7 +185,7 @@ def main() -> None:
             objs = [DetectedObject(o["label"], o["confidence"], tuple(o["box_xyxy"]) if o.get("box_xyxy") else None) for o in r["objects"]]
             cands = generator.generate(image, objs)
             scored = clip.score(image, cands)
-            ranked = reranker.rerank(scored, objs, image_path=image)
+            ranked = reranker.rerank(scored, objs)
             first.append(scored[0].text if scored else "")
             best.append(ranked[0].caption.text if ranked else "")
             identical += best[-1] == r["caption"]

@@ -2,11 +2,11 @@
 
 Compares the unbiased captioner and the gamma-biased captioner at three points:
   before rerank          first candidate (plain beam search)
-  old formula rerank     0.2*S_base + 0.4*S_align + 0.4*S_belief
+  old formula rerank     0.2*S_base + 0.4*S_align + 0.4*S_det
   new formula rerank     old formula + 1*S_obj + 0.1*S_retr (locked on val, section 2)
 
-Usage (from demo/, Python with torch + transformers, Java for METEOR):
-    python research/scripts/logit_bias_final_eval.py \
+Usage (from the repo root, Python with torch + transformers, Java for METEOR):
+    python eval/logit_bias_final_eval.py \
         --parts results/retrieval_logit_bias_test_part0.json results/retrieval_logit_bias_test_part2500.json \
         --output results/logit_bias_final_test.json
 """
@@ -21,14 +21,14 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "core"))
 
 import chair_metric  # noqa: E402
 import sretr_experiment as se  # noqa: E402
 from evaluate_reranked_quality import compute_metrics  # noqa: E402
 
-DEMO = Path(__file__).resolve().parents[2]
-TEST_REPORT = DEMO / "results" / "new_dynamic_cons_attnpool_rerank_test.json"
+ROOT = Path(__file__).resolve().parents[1]
+TEST_REPORT = ROOT / "results" / "new_dynamic_cons_attnpool_rerank_test.json"
 
 
 def main() -> None:
@@ -39,7 +39,7 @@ def main() -> None:
     ap.add_argument("--spice", action="store_true", help="tính thêm SPICE (Java 8, không dùng cache LMDB ~98GB)")
     ap.add_argument("--spice-sides", default="biased",
                     help="bên nào tính SPICE khi có --spice: 'biased', 'base' hoặc 'base,biased' (mỗi điểm ~30k câu)")
-    ap.add_argument("--merged", type=Path, default=DEMO / "results" / "logit_bias_gamma1_test_report.json",
+    ap.add_argument("--merged", type=Path, default=ROOT / "results" / "logit_bias_gamma1_test_report.json",
                     help="where to save the biased run as a report")
     args = ap.parse_args()
 

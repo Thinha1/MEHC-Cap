@@ -9,8 +9,8 @@ already verified against this project's nltk install), `nltk.word_tokenize` is u
 data/synonyms.txt is copied verbatim into chair_synonyms.txt next to this file.
 
 Why this exists alongside tune_formula_weights.hallucinated_words(): that proxy reuses the
-SAME noun-matching logic FormulaReranker.S_belief is built on, so a weight combo leaning on
-S_belief is somewhat guaranteed to score well on it -- not independent evidence. CHAIR's ground
+SAME noun-matching logic FormulaReranker.S_det is built on, so a weight combo leaning on
+S_det is somewhat guaranteed to score well on it -- not independent evidence. CHAIR's ground
 truth instead comes from real, human-authored data never touched by this project's own models:
 - MSCOCO instance segmentation annotations (instances_val2014.json, official COCO download --
   see load_instance_objects_by_cocoid), and/or
