@@ -1,13 +1,13 @@
-"""Chọn ngưỡng bằng chứng r_S của S_obj trên tập kiểm định, giữ trọng số w_obj = 1, w_retr = 0,1.
+"""Choose the evidence threshold r_S of S_obj on the validation split, with weights w_obj = 1, w_retr = 0.1.
 
-Vật thể được miễn phạt khi YOLO thấy (conf >= 0,25) hoặc ít nhất r trong K câu truy hồi nhắc tới. Tính (CHAIRs, CHAIRi,
-CIDEr, BLEU-4, không METEOR):
-- sweep: K ∈ {3, 5, 10} × r ∈ {1..min(K, 5)}, bộ năm tín hiệu; thêm bản chỉ YOLO ("yolo") với K = 5.
-- obj_only: chỉ thêm 1·S_obj (K = 5) với từng r và bản chỉ YOLO.
-- grid: lưới w_retr ∈ {0; 0,1; 0,2; 0,3} × w_obj ∈ {0; 0,5; 1; 2} với K = 5, r = --grid-thr.
-- table4: đủ chỉ số (có METEOR) cho ba tín hiệu / +0,1·S_retr / +1·S_obj / năm tín hiệu với K = 5, r = --grid-thr.
+An object is not penalised when YOLO detects it (conf >= 0.25) or at least r of the K retrieved captions name it. Computes (CHAIRs, CHAIRi,
+CIDEr, BLEU-4, no METEOR):
+- sweep: K ∈ {3, 5, 10} × r ∈ {1..min(K, 5)}, five signals, plus a YOLO-only version ("yolo") with K = 5.
+- obj_only: only 1·S_obj added (K = 5) for each r and the YOLO-only version.
+- grid: w_retr ∈ {0, 0.1, 0.2, 0.3} × w_obj ∈ {0, 0.5, 1, 2} with K = 5, r = --grid-thr.
+- table4: all metrics (with METEOR) for three signals / +0.1·S_retr / +1·S_obj / five signals with K = 5, r = --grid-thr.
 
-Chạy (thư mục gốc của repo):
+Usage (from the repo root):
     python eval/sobj_threshold_val.py --report results/e35_k6_val_merged.json \
         --output results/e35_k6_sobj_threshold_val.json
 """
@@ -30,7 +30,7 @@ import sretr_experiment as se  # noqa: E402
 from evaluate_reranked_quality import compute_metrics  # noqa: E402
 
 KS = [3, 5, 10]
-YOLO_ONLY = 99  # ngưỡng không câu truy hồi nào đạt: chỉ YOLO là bằng chứng
+YOLO_ONLY = 99  # a threshold no retrieval count reaches: YOLO is the only evidence
 
 
 def main() -> None:

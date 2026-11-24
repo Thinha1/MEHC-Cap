@@ -165,8 +165,8 @@ Observations:
 | `eval/flickr30k_eval.py` | Flickr30k evaluation (logit blocking + reranking) |
 | `logs/clean_env_check.log` | Run of the instructions below in a fresh virtual environment (install, every script's `--help`, step 0, a CPU re-score and a 5-image smoke test of steps 2 to 4) |
 | `webapp/` | Demo app (FastAPI + Next.js) that runs the pipeline step by step; see `webapp/README.md` |
-| `papers/` | The 47 references of the paper, with DOI or paper links; see `papers/README.md` |
-| `references.bib` | BibTeX of the 47 references, keys `ref1` to `ref47` in order of first citation |
+| `papers/` | The 46 references of the paper, with DOI or paper links; see `papers/README.md` |
+| `references.bib` | BibTeX of the 46 references, keys `ref1` to `ref47` (no `ref18`) in order of first citation |
 
 ## 5. Setup, data and checkpoints
 

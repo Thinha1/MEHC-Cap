@@ -31,11 +31,11 @@ RANDOM_SEED = 40
 
 
 def find_java8_bin_dir() -> str | None:
-    """Tim JRE/JDK 8 tren Windows danh rieng cho SPICE.
+    """Find a JRE/JDK 8 on Windows, used only for SPICE.
 
-    spice-1.0.jar (2016) dung Nashorn (JS engine bi GO KHOI JDK tu ban 15 tro di) va cham reflection
-    noi bo cua JDK tu ban 16 (module system). Java 8 khong co ca 2 van de nay. Uu tien bien moi
-    truong JAVA8_HOME neu nguoi dung tu khai bao, sau do do cac vi tri cai Windows pho bien.
+    spice-1.0.jar (2016) uses Nashorn (a JS engine REMOVED from the JDK since version 15) and hits the internal
+    reflection blocked by the JDK 16+ module system. Java 8 has neither problem. The JAVA8_HOME environment
+    variable wins if set, otherwise the usual Windows install locations are probed.
     """
     override = os.environ.get("JAVA8_HOME")
     if override and os.path.isfile(os.path.join(override, "bin", "java.exe")):
@@ -61,11 +61,11 @@ def log_step(message: str) -> None:
 
 
 def spice_score_no_cache(gts: dict, res: dict) -> float:
-    """SPICE giống pycocoevalcap.spice.Spice.compute_score nhưng KHÔNG truyền `-cache`.
+    """SPICE like pycocoevalcap.spice.Spice.compute_score, but WITHOUT `-cache`.
 
-    Với `-cache`, spice-1.0.jar mở một LMDB có map size hardcode ~98 GB; trên Windows file data.mdb
-    không sparse nên chiếm thật ~98 GB đĩa. Bỏ cache thì điểm y hệt, chỉ phải parse lại câu mỗi lần chạy.
-    Dùng `java` đang có trong PATH (compute_metrics đặt Java 8 lên đầu PATH nếu tìm thấy).
+    With `-cache`, spice-1.0.jar opens an LMDB with a hard-coded map size of ~98 GB. On Windows data.mdb
+    is not sparse and really takes ~98 GB of disk. Without the cache the scores are identical, captions are just parsed again on each run.
+    Uses the `java` on PATH (compute_metrics puts Java 8 first on PATH when it finds one).
     """
     import json
     import tempfile
@@ -82,9 +82,9 @@ def spice_score_no_cache(gts: dict, res: dict) -> float:
         in_file, out_file = os.path.join(tmp, "in.json"), os.path.join(tmp, "out.json")
         with open(in_file, "w", encoding="utf-8") as f:
             json.dump(data, f)
-        # CoreNLP mặc định dùng mọi luồng CPU; SPICE_THREADS giới hạn lại (mặc định 1/3 số luồng để máy đỡ nóng).
+        # CoreNLP uses every CPU thread by default. SPICE_THREADS limits it (default: a third of the threads, to keep the machine cool).
         threads = os.environ.get("SPICE_THREADS") or str(max(1, (os.cpu_count() or 4) // 3))
-        # Windows: chạy Java ở độ ưu tiên BelowNormal để nhường CPU khi người dùng đang dùng máy.
+        # Windows: run Java at BelowNormal priority so the machine stays usable.
         flags = getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0) if os.name == "nt" else 0
         subprocess.check_call(["java", "-jar", "-Xmx8G", spice_mod.SPICE_JAR, in_file, "-out", out_file,
                                "-threads", threads, "-subset", "-silent"], cwd=spice_dir, creationflags=flags)
@@ -110,9 +110,9 @@ def load_karpathy_references(
     image_dir: Path,
 ) -> tuple[list[str], dict[str, list[str]]]:
     if not karpathy_json_file.is_file():
-        raise FileNotFoundError(f"Khong tim thay Karpathy JSON: {karpathy_json_file}")
+        raise FileNotFoundError(f"Karpathy JSON not found: {karpathy_json_file}")
     if not image_dir.is_dir():
-        raise FileNotFoundError(f"Khong tim thay folder anh val2014: {image_dir}")
+        raise FileNotFoundError(f"val2014 image folder not found: {image_dir}")
 
     data = json.loads(karpathy_json_file.read_text(encoding="utf-8"))
     references_by_filename: dict[str, list[str]] = defaultdict(list)
@@ -132,13 +132,13 @@ def load_karpathy_references(
 
     filenames = sorted(references_by_filename)
     if not filenames:
-        raise ValueError(f"Khong co anh/caption nao cho split '{split}'.")
+        raise ValueError(f"No images/captions for split '{split}'.")
     return filenames, references_by_filename
 
 
 def load_prediction_records(predictions_file: Path) -> list[dict[str, Any]]:
     if not predictions_file.is_file():
-        raise FileNotFoundError(f"Khong tim thay predictions file: {predictions_file}")
+        raise FileNotFoundError(f"Predictions file not found: {predictions_file}")
     data = json.loads(predictions_file.read_text(encoding="utf-8"))
     if isinstance(data, dict):
         if "items" in data and isinstance(data["items"], list):
@@ -148,7 +148,7 @@ def load_prediction_records(predictions_file: Path) -> list[dict[str, Any]]:
         return [data]
     if isinstance(data, list):
         return data
-    raise ValueError("Predictions JSON phai la object, list, hoac object co key 'items'.")
+    raise ValueError("Predictions JSON must be an object, a list, or an object with an 'items' key.")
 
 
 def get_image_filename(record: dict[str, Any]) -> str:
@@ -159,7 +159,7 @@ def get_image_filename(record: dict[str, Any]) -> str:
         or record.get("path")
     )
     if not value:
-        raise ValueError(f"Record thieu image/image_path: {record.keys()}")
+        raise ValueError(f"Record is missing image/image_path: {record.keys()}")
     return Path(str(value)).name
 
 
@@ -201,7 +201,7 @@ def get_caption(record: dict[str, Any], field: str) -> str:
             if caption:
                 return caption
 
-    raise ValueError(f"Khong lay duoc caption voi field '{field}' trong record.")
+    raise ValueError(f"Cannot read a caption from field '{field}' of the record.")
 
 
 def get_first_candidate_caption(record: dict[str, Any]) -> str | None:
@@ -212,7 +212,7 @@ def get_first_candidate_caption(record: dict[str, Any]) -> str | None:
 
 
 def simple_standardize(text: str) -> str:
-    """Same normalization as the baseline eval script (danh gia mscoco.txt): lowercase + strip
+    """Same normalization as the baseline eval script (mscoco.txt evaluation): lowercase + strip
     punctuation/digits via regex, no real tokenizer. Kept byte-for-byte identical to that script
     so --tokenizer simple gives numbers directly comparable to baseline-reported ones."""
     text = str(text).lower()
@@ -234,26 +234,26 @@ def compute_metrics(
     - "ptb" (default): real Stanford PTBTokenizer, the standard COCO caption eval convention.
       Needs a JRE (`java`) on PATH -- METEOR needs it too regardless of this setting.
     - "simple": lowercase + strip punctuation/digits (see simple_standardize), matching the
-      baseline eval script (danh gia mscoco.txt) exactly -- use this to compare fairly against
+      baseline eval script (mscoco.txt evaluation) exactly -- use this to compare fairly against
       numbers that script reported, since "ptb" tokenization alone shifts scores.
     ROUGE-L/CIDEr are pure Python/numpy either way and never need Java."""
     if not predictions:
-        raise ValueError("Khong co prediction nao de danh gia.")
+        raise ValueError("No predictions to evaluate.")
 
     try:
         from pycocoevalcap.bleu.bleu import Bleu
         from pycocoevalcap.cider.cider import Cider
         from pycocoevalcap.rouge.rouge import Rouge
     except ImportError as exc:
-        raise ImportError("Thieu pycocoevalcap. Cai bang: pip install pycocoevalcap") from exc
+        raise ImportError("pycocoevalcap is missing. Install it with: pip install pycocoevalcap") from exc
 
     start = time.perf_counter()
     if tokenizer == "simple":
-        log_step("[*] Dang tokenize (don gian, giong baseline: lowercase + bo dau cau/so)...")
+        log_step("[*] Tokenizing (simple, as the baseline: lowercase, punctuation and digits removed)...")
         gts = {i: [simple_standardize(ref) for ref in refs] for i, refs in enumerate(references)}
         res = {i: [simple_standardize(pred)] for i, pred in enumerate(predictions)}
     elif tokenizer == "ptb":
-        log_step("[*] Dang tokenize (Stanford PTBTokenizer, can Java)...")
+        log_step("[*] Tokenizing (Stanford PTBTokenizer, needs Java)...")
         from pycocoevalcap.tokenizer.ptbtokenizer import PTBTokenizer
 
         gts_raw = {i: [{"caption": ref} for ref in refs] for i, refs in enumerate(references)}
@@ -264,62 +264,62 @@ def compute_metrics(
             res = ptb.tokenize(res_raw)
         except (OSError, FileNotFoundError) as exc:
             raise RuntimeError(
-                "Khong chay duoc PTBTokenizer -- pycocoevalcap can 'java' (JRE) trong PATH."
+                "Cannot run PTBTokenizer -- pycocoevalcap needs 'java' (JRE) on PATH."
             ) from exc
     else:
-        raise ValueError("--tokenizer chi nhan 'ptb' hoac 'simple'.")
-    log_step(f"[*] Xong tokenize sau {elapsed(start)}")
+        raise ValueError("--tokenizer accepts only 'ptb' or 'simple'.")
+    log_step(f"[*] Tokenize done after {elapsed(start)}")
 
     metrics: dict[str, float] = {}
 
     start = time.perf_counter()
-    log_step("[*] Dang tinh BLEU-1..4 (pycocoevalcap)...")
+    log_step("[*] Computing BLEU-1..4 (pycocoevalcap)...")
     bleu_scores, _ = Bleu(4).compute_score(gts, res, verbose=0)
     for n, score in enumerate(bleu_scores, start=1):
         metrics[f"BLEU-{n}"] = score * 100
-    log_step(f"[*] Xong BLEU sau {elapsed(start)}")
+    log_step(f"[*] BLEU done after {elapsed(start)}")
 
     if use_meteor:
         start = time.perf_counter()
-        log_step("[*] Dang tinh METEOR (pycocoevalcap, can Java)...")
+        log_step("[*] Computing METEOR (pycocoevalcap, needs Java)...")
         from pycocoevalcap.meteor.meteor import Meteor
 
         meteor_value, _ = Meteor().compute_score(gts, res)
         metrics["METEOR"] = meteor_value * 100
-        log_step(f"[*] Xong METEOR sau {elapsed(start)}")
+        log_step(f"[*] METEOR done after {elapsed(start)}")
     else:
-        log_step("[*] Bo qua METEOR.")
+        log_step("[*] Skipping METEOR.")
 
     start = time.perf_counter()
-    log_step("[*] Dang tinh ROUGE-L (pycocoevalcap)...")
+    log_step("[*] Computing ROUGE-L (pycocoevalcap)...")
     rouge_value, _ = Rouge().compute_score(gts, res)
     metrics["ROUGE-L"] = rouge_value * 100
-    log_step(f"[*] Xong ROUGE-L sau {elapsed(start)}")
+    log_step(f"[*] ROUGE-L done after {elapsed(start)}")
 
     if use_cider:
         start = time.perf_counter()
-        log_step("[*] Dang tinh CIDEr (pycocoevalcap)...")
+        log_step("[*] Computing CIDEr (pycocoevalcap)...")
         cider_value, _ = Cider().compute_score(gts, res)
         metrics["CIDEr"] = cider_value
-        log_step(f"[*] Xong CIDEr sau {elapsed(start)}")
+        log_step(f"[*] CIDEr done after {elapsed(start)}")
 
     if use_spice:
         start = time.perf_counter()
-        log_step("[*] Dang tinh SPICE (pycocoevalcap, can Java -- co the cham o lan chay dau)...")
-        # spice-1.0.jar dung ca Nashorn (JS engine, bi GO KHOI JDK tu ban 15) lan reflection noi
-        # bo java.base qua thu vien FST (chan boi module system tu JDK 16). Java 8 khong dinh ca
-        # 2 van de nay nen la lua chon uu tien NEU may co san. Chi doi PATH (khong dong thoi set
-        # JAVA_TOOL_OPTIONS --add-opens, vi Java 8 KHONG hieu flag do va se crash ngay luc khoi
-        # dong JVM voi "Unrecognized option"). Chi ap dung rieng cho subprocess cua Spice, khoi
-        # phuc PATH ngay sau, khong anh huong METEOR/PTBTokenizer da chay on dinh voi JDK hien tai.
+        log_step("[*] Computing SPICE (pycocoevalcap, needs Java -- the first run can be slow)...")
+        # spice-1.0.jar uses both Nashorn (a JS engine REMOVED from the JDK since version 15) and internal
+        # java.base reflection through the FST library (blocked by the module system since JDK 16). Java 8 has
+        # neither problem, so it is preferred WHEN installed. Only PATH is changed (JAVA_TOOL_OPTIONS
+        # --add-opens is NOT set at the same time, because Java 8 does not know that flag and the JVM
+        # would fail at start-up with "Unrecognized option"). This applies only to the SPICE subprocess,
+        # PATH is restored right after, so METEOR/PTBTokenizer keep running on the current JDK.
         original_path = os.environ.get("PATH", "")
         java8_bin = find_java8_bin_dir()
         if java8_bin:
             os.environ["PATH"] = java8_bin + os.pathsep + original_path
-            log_step(f"[*] Dung Java 8 cho SPICE (tim thay tai {java8_bin}) -- can cho Nashorn.")
+            log_step(f"[*] Using Java 8 for SPICE (found at {java8_bin}) -- needed for Nashorn.")
         else:
-            # Khong co Java 8: fallback --add-opens de it nhat qua duoc loi JPMS/FST tren JDK 16+
-            # (van con nguy co loi Nashorn rieng, xem thong bao loi neu that bai).
+            # No Java 8: fall back to --add-opens to at least get past the JPMS/FST error on JDK 16+
+            # (a separate Nashorn error can still occur, see the error message if it fails).
             os.environ["JAVA_TOOL_OPTIONS"] = " ".join(
                 [
                     os.environ.get("JAVA_TOOL_OPTIONS", ""),
@@ -338,22 +338,22 @@ def compute_metrics(
         try:
             spice_value = spice_score_no_cache(gts, res)
             metrics["SPICE"] = spice_value * 100
-            log_step(f"[*] Xong SPICE sau {elapsed(start)}")
+            log_step(f"[*] SPICE done after {elapsed(start)}")
         except (OSError, FileNotFoundError) as exc:
             raise RuntimeError(
-                "Khong chay duoc SPICE -- pycocoevalcap can 'java' (JRE) trong PATH, giong METEOR."
+                "Cannot run SPICE -- pycocoevalcap needs 'java' (JRE) on PATH, like METEOR."
             ) from exc
         except subprocess.CalledProcessError as exc:
             raise RuntimeError(
-                "SPICE (spice-1.0.jar) chay ra loi (xem stderr o tren). Ba nguyen nhan da gap "
-                "thuc te tren Windows: (1) JDK qua moi (16+) chan reflection cua thu vien FST ben "
-                "trong jar (InaccessibleObjectException) -- da tu them --add-opens qua "
-                "JAVA_TOOL_OPTIONS o tren; (2) [da xu ly] cache LMDB ~98GB: spice_score_no_cache "
-                "khong truyen -cache nen khong tao data.mdb; (3) "
-                "spice-1.0.jar dung Nashorn (JS engine), da bi GO KHOI JDK tu ban 15 -- gay "
-                "NullPointerException 'scriptEngine is null'. Cach sua (3): cai/dung mot JRE/JDK 8 "
-                "va tro JAVA8_HOME toi thu muc goc cua no (script se tu do va uu tien no CHI cho "
-                "SPICE); neu khong co Java 8, dung --no-spice de bo qua metric nay tren may nay."
+                "SPICE (spice-1.0.jar) failed (see stderr above). Three causes seen "
+                "in practice on Windows: (1) a recent JDK (16+) blocks the reflection of the FST library "
+                "inside the jar (InaccessibleObjectException) -- --add-opens was added through "
+                "JAVA_TOOL_OPTIONS above, (2) [handled] the ~98 GB LMDB cache: spice_score_no_cache "
+                "does not pass -cache, so no data.mdb is created, (3) "
+                "spice-1.0.jar uses Nashorn (a JS engine) that was REMOVED from the JDK in version 15 -- causing "
+                "NullPointerException 'scriptEngine is null'. Fix for (3): install a JRE/JDK 8 "
+                "and point JAVA8_HOME to its root folder (the script finds it and uses it ONLY for "
+                "SPICE). Without Java 8, pass --no-spice to skip this metric on this machine."
             ) from exc
         finally:
             os.environ["PATH"] = original_path
@@ -384,7 +384,7 @@ def build_eval_rows_from_predictions(
             }
         )
     if skipped:
-        log_step(f"[!] Bo qua {skipped} record vi khong tim thay reference theo filename.")
+        log_step(f"[!] Skipped {skipped} records with no reference for their filename.")
     return rows
 
 
@@ -425,7 +425,7 @@ def run_demo_pipeline(
     if args.resume and args.output.is_file():
         existing = json.loads(args.output.read_text(encoding="utf-8"))
         rows = existing.get("rows", []) if isinstance(existing, dict) else []
-        log_step(f"[*] Resume: da co {len(rows)} rows trong {args.output}")
+        log_step(f"[*] Resume: {len(rows)} rows already in {args.output}")
 
     done = {row.get("image") for row in rows}
     pending = [filename for filename in filenames if filename not in done]
@@ -468,14 +468,14 @@ def load_report(report_file: Path) -> tuple[list[dict[str, Any]], list[str] | No
     run_demo_pipeline (see vocab.set_object_noun_vocab) -- None for older reports that predate
     this field, or for a plain list-of-rows file."""
     if not report_file.is_file():
-        raise FileNotFoundError(f"Khong tim thay candidates file: {report_file}")
+        raise FileNotFoundError(f"Candidates file not found: {report_file}")
     data = json.loads(report_file.read_text(encoding="utf-8"))
     if isinstance(data, dict) and isinstance(data.get("rows"), list):
         classes = data.get("yolo_classes")
         return data["rows"], (classes if isinstance(classes, list) else None)
     if isinstance(data, list):
         return data, None
-    raise ValueError("Candidates file phai la object co key 'rows' hoac mot list cac row.")
+    raise ValueError("Candidates file must be an object with a 'rows' key or a list of rows.")
 
 
 def run_rerank_only_pipeline(
@@ -503,8 +503,8 @@ def run_rerank_only_pipeline(
         vocab.set_object_noun_vocab(set(yolo_classes))
     else:
         log_step(
-            "[!] Candidates file khong co 'yolo_classes' (report cu). "
-            "Dung tu dien object-noun mac dinh (co the thieu vai lop COCO)."
+            "[!] Candidates file has no 'yolo_classes' (old report). "
+            "Using the default object-noun vocabulary (some COCO classes may be missing)."
         )
     cached_rows = {row["image"]: row for row in report_rows if row.get("image")}
 
@@ -512,13 +512,13 @@ def run_rerank_only_pipeline(
     if args.resume and args.output.is_file():
         existing = json.loads(args.output.read_text(encoding="utf-8"))
         rows = existing.get("rows", []) if isinstance(existing, dict) else []
-        log_step(f"[*] Resume: da co {len(rows)} rows trong {args.output}")
+        log_step(f"[*] Resume: {len(rows)} rows already in {args.output}")
 
     done = {row.get("image") for row in rows}
     pending = [filename for filename in wanted_filenames if filename not in done]
     missing = [filename for filename in pending if filename not in cached_rows]
     if missing:
-        log_step(f"[!] Bo qua {len(missing)} anh khong co trong candidates file (chua duoc chay --run-pipeline).")
+        log_step(f"[!] Skipped {len(missing)} images that are not in the candidates file (not run with --run-pipeline yet).")
     pending = [filename for filename in pending if filename in cached_rows]
 
     def rerank_one(filename: str) -> dict[str, Any]:
@@ -580,7 +580,7 @@ def run_rerank_only_pipeline(
                 try:
                     rows.append(future.result())
                 except Exception as exc:
-                    log_step(f"[!] Loi rerank anh {filename}: {exc}")
+                    log_step(f"[!] Rerank error for image {filename}: {exc}")
                 if args.save_every > 0 and index % args.save_every == 0:
                     save_partial_report(args.output, rows, args, yolo_classes=yolo_classes)
     return rows, yolo_classes
@@ -612,7 +612,7 @@ def compare_baseline(
     baseline_rows = [row for row in rows if row.get("baseline_candidate")]
     if not baseline_rows:
         return None
-    log_step("\n=== DANH GIA CAPTION UNG VIEN DAU TIEN (TRUOC RERANK) ===")
+    log_step("\n=== EVALUATING FIRST-CANDIDATE CAPTIONS (BEFORE RERANK) ===")
     return compute_metrics(
         [row["baseline_candidate"] for row in baseline_rows],
         [row["references"] for row in baseline_rows],
@@ -658,11 +658,11 @@ def build_chair_ground_truth(
             if cocoid is not None and cocoid in instance_objects_by_cocoid:
                 gt_by_filename[filename] |= instance_objects_by_cocoid[cocoid]
                 merged += 1
-        log_step(f"[*] CHAIR ground truth: reference captions + instance segmentation cho {merged}/{len(gt_by_filename)} anh.")
+        log_step(f"[*] CHAIR ground truth: reference captions + instance segmentation for {merged}/{len(gt_by_filename)} images.")
     else:
         log_step(
-            "[!] Khong co instances_val2014.json hop le -- CHAIR ground truth chi dung 5 cau "
-            "reference nguoi viet (yeu hon instance segmentation)."
+            "[!] No valid instances_val2014.json -- CHAIR ground truth uses only the 5 "
+            "human reference captions (weaker than instance segmentation)."
         )
     return gt_by_filename, mscoco_objects, inverse_synonym_dict
 
@@ -716,31 +716,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-meteor",
         action="store_true",
-        help="Bo qua METEOR (pycocoevalcap.meteor -- can Java/JRE trong PATH).",
+        help="Skip METEOR (pycocoevalcap.meteor -- needs Java/JRE on PATH).",
     )
     parser.add_argument("--no-cider", action="store_true")
     parser.add_argument(
         "--no-spice",
         action="store_true",
-        help="Bo qua SPICE (pycocoevalcap.spice -- can Java/JRE trong PATH, cham hon cac metric khac).",
+        help="Skip SPICE (pycocoevalcap.spice -- needs Java/JRE on PATH, slower than the other metrics).",
     )
     parser.add_argument(
         "--tokenizer",
         choices=["ptb", "simple"],
         default="simple",
-        help="'ptb' (mac dinh) = Stanford PTBTokenizer, chuan danh gia COCO. 'simple' = lowercase "
-        "+ bo dau cau/so giong het script baseline (danh gia mscoco.txt) -- dung de so sanh "
-        "cong bang voi so lieu baseline da bao cao.",
+        help="'ptb' = Stanford PTBTokenizer, the standard COCO evaluation. 'simple' (default) = lowercase "
+        "+ punctuation and digits removed, exactly as the baseline script (mscoco.txt evaluation) -- for a fair "
+        "comparison with the reported baseline numbers.",
     )
     parser.add_argument("--compare-first-candidate", action="store_true")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_FILE)
-    parser.add_argument("--resume", action="store_true", help="Tiep tuc tu report JSON da luu tam.")
-    parser.add_argument("--save-every", type=int, default=10, help="Luu tam sau moi N anh khi --run-pipeline.")
+    parser.add_argument("--resume", action="store_true", help="Continue from the partially saved report JSON.")
+    parser.add_argument("--save-every", type=int, default=10, help="Save progress every N images with --run-pipeline.")
     parser.add_argument(
         "--concurrency",
         type=int,
         default=1,
-        help="So anh rerank chay song song (chi cho --rerank-only).",
+        help="Number of images reranked in parallel (only for --rerank-only).",
     )
 
     parser.add_argument("--yolo-model", default="yolov8l-worldv2.pt")
@@ -753,9 +753,9 @@ def parse_args() -> argparse.Namespace:
         "--safe-beam-size",
         type=int,
         default=3,
-        help="Sinh them 1 candidate 'an toan' bang plain beam search (khong diverse), beam width "
-        "nay -- luon co mat de reranker khong bao gio te hon plain beam search. 0 = tat, chi con "
-        "cac candidate diverse (hanh vi cu).",
+        help="Add one 'safe' candidate from plain (non-diverse) beam search with this beam width "
+        "-- always present, so the reranker is never worse than plain beam search. 0 = off, only "
+        "the diverse candidates (old behavior).",
     )
     parser.add_argument("--num-beams", type=int, default=10)
     parser.add_argument("--num-beam-groups", type=int, default=5)
@@ -783,7 +783,7 @@ def main() -> None:
         rows, yolo_classes = run_demo_pipeline(filenames, references_by_filename, args.image_dir, args)
     elif args.rerank_only:
         if not args.candidates_file:
-            raise SystemExit("Hay truyen --candidates-file report.json (tu --run-pipeline) khi dung --rerank-only.")
+            raise SystemExit("Pass --candidates-file report.json (from --run-pipeline) with --rerank-only.")
         rows, yolo_classes = run_rerank_only_pipeline(
             args.candidates_file, set(filenames), references_by_filename, args.image_dir, args
         )
@@ -793,12 +793,12 @@ def main() -> None:
         if args.max_images is not None:
             rows = rows[: args.max_images]
     else:
-        raise SystemExit("Hay truyen --predictions file.json, --run-pipeline, hoac --rerank-only --candidates-file file.json.")
+        raise SystemExit("Pass --predictions file.json, --run-pipeline, or --rerank-only --candidates-file file.json.")
 
     if not rows:
-        raise SystemExit("Khong co row nao de danh gia.")
+        raise SystemExit("No rows to evaluate.")
 
-    log_step(f"[*] So caption reranked se danh gia: {len(rows)}")
+    log_step(f"[*] Reranked captions to evaluate: {len(rows)}")
     reranked_metrics = compute_metrics(
         [row["caption"] for row in rows],
         [row["references"] for row in rows],
@@ -833,9 +833,9 @@ def main() -> None:
                 )
             )
 
-    print_metrics("KET QUA CAPTION SAU RERANKING", reranked_metrics)
+    print_metrics("CAPTION RESULTS AFTER RERANKING", reranked_metrics)
     if baseline_metrics is not None:
-        print_metrics("KET QUA UNG VIEN DAU TIEN TRUOC RERANK", baseline_metrics)
+        print_metrics("FIRST-CANDIDATE RESULTS BEFORE RERANK", baseline_metrics)
 
     payload = {
         "split": args.split,
@@ -853,7 +853,7 @@ def main() -> None:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    log_step(f"[*] Da luu report: {args.output}")
+    log_step(f"[*] Saved report: {args.output}")
 
 
 if __name__ == "__main__":

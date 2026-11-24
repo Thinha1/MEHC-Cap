@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Thí nghiệm bật/tắt thành phần trên tập kiểm tra (5.000 ảnh, chia 4 đoạn 1.250 ảnh, bỏ qua đoạn đã có kết quả).
-# Hai luồng chạy song song (tối đa 2 tiến trình GPU):
-#   bash eval/run_onoff_ablation.sh P   # mô hình đề xuất, chặn δ=3 (e40_g3): cấu hình cuối
-#   bash eval/run_onoff_ablation.sh A   # cơ sở + chặn δ=3 (cs_g3), rồi đề xuất chỉ YOLO (e40_yolo)
-#   bash eval/run_onoff_ablation.sh B   # đề xuất không chặn (e40_g0), rồi đề xuất chỉ truy hồi (e40_retr)
-#   bash eval/run_onoff_ablation.sh C   # chỉ Dynamic Logits: không chặn (dl_g0), chặn δ=3 (dl_g3)
-#   bash eval/run_onoff_ablation.sh D   # chỉ học tương phản: không chặn (cl_g0), chặn δ=3 (cl_g3)
-#   bash eval/run_onoff_ablation.sh E   # cơ sở không chặn (cs_g0)
-# Chạy từ thư mục gốc của repo. Kết quả: results/onoff/<tên>_part<start>.json
+# Component on/off experiments on the test split (5,000 images in 4 shards of 1,250, finished shards are skipped).
+# Run at most two of these in parallel (at most 2 GPU processes):
+#   bash eval/run_onoff_ablation.sh P   # proposed model, blocking δ=3 (e40_g3): the final configuration
+#   bash eval/run_onoff_ablation.sh A   # baseline + blocking δ=3 (cs_g3), then proposed with YOLO only (e40_yolo)
+#   bash eval/run_onoff_ablation.sh B   # proposed without blocking (e40_g0), then proposed with retrieval only (e40_retr)
+#   bash eval/run_onoff_ablation.sh C   # Dynamic Logits only: no blocking (dl_g0), blocking δ=3 (dl_g3)
+#   bash eval/run_onoff_ablation.sh D   # contrastive learning only: no blocking (cl_g0), blocking δ=3 (cl_g3)
+#   bash eval/run_onoff_ablation.sh E   # baseline without blocking (cs_g0)
+# Run from the repo root. Output: results/onoff/<name>_part<start>.json
 set -u
 PY="${PY:-python}"  # override with PY=/path/to/python
 REPORT="${REPORT:-results/test_yoloworld.json}"  # YOLO-World report of the test split (README, step 3)

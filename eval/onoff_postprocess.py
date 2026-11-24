@@ -1,9 +1,9 @@
-"""Ghép 4 đoạn 1.250 ảnh của một cấu hình bật/tắt thành một báo cáo 5.000 ảnh rồi chấm bộ chọn lại câu năm tín hiệu.
+"""Merge the 4 shards of 1,250 images of an on/off configuration into one 5,000-image report and score the five-signal reranker.
 
-Chạy từ thư mục gốc của repo (mặc định chạy trên CPU để không chiếm GPU của các luồng sinh câu):
+Run from the repo root (CPU by default, so the GPU stays free for generation):
     python eval/onoff_postprocess.py --name cs_g3 --evidence union --spice
     python eval/onoff_postprocess.py --name e40_existing --merged results/e40_g3_yoloworld_merged.json
-Kết quả: results/onoff/<name>_merged.json (nếu ghép) và results/onoff/<name>_eval.json
+Output: results/onoff/<name>_merged.json (when merging) and results/onoff/<name>_eval.json
 """
 import argparse
 import json
@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "dataset" / "retrieval_cache"
-# tất cả báo cáo cùng 5.000 ảnh kiểm tra theo cùng thứ tự nên dùng chung chỉ số láng giềng truy hồi
+# every report covers the same 5,000 test images in the same order, so they share the retrieval neighbours
 NB_SOURCE = CACHE / "neighbours_test_yoloworld_k5.npy"  # built in README step 3
 
 
@@ -23,9 +23,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
     ap.add_argument("--evidence", choices=["union", "yolo", "retr"], default="union")
-    ap.add_argument("--merged", type=Path, help="dùng báo cáo đã ghép sẵn thay vì ghép 4 đoạn")
+    ap.add_argument("--merged", type=Path, help="use an already merged report instead of merging 4 shards")
     ap.add_argument("--spice", action="store_true")
-    ap.add_argument("--gpu", action="store_true", help="cho phép dùng GPU (mặc định CPU)")
+    ap.add_argument("--gpu", action="store_true", help="allow the GPU (CPU by default)")
     a = ap.parse_args()
     out_dir = ROOT / "results" / "onoff"
     if a.merged:
@@ -39,7 +39,7 @@ def main():
         assert len(rows) == 5000, len(rows)
         report = out_dir / f"{a.name}_merged.json"
         report.write_text(json.dumps({"split": "test", "config": run["config"], "rows": rows}, ensure_ascii=False), encoding="utf-8")
-        print(f"đã ghép {len(rows)} ảnh -> {report}")
+        print(f"merged {len(rows)} images -> {report}")
     nb = CACHE / f"neighbours_{report.stem}_k5.npy"
     if not nb.is_file():
         shutil.copyfile(NB_SOURCE, nb)

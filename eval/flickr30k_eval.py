@@ -1,29 +1,29 @@
-"""Đánh giá mô hình train trên Flickr30k bằng đúng quy trình đã dùng cho COCO: chặn logits khi suy luận + chọn lại câu.
+"""Evaluate the Flickr30k models with the same flow as COCO: logit blocking at decoding time + reranking.
 
-Quy trình mỗi ảnh (giống retrieval_logit_bias_experiment.py / sobj_threshold_eval.py, chỉ đổi dữ liệu sang Flickr30k):
-  1. YOLO-World (yolov8l-worldv2, ngưỡng 0,25) -> vật thể thấy được.
-  2. Truy hồi K = 5 câu gần ảnh nhất trong kho câu của tập TRAIN Flickr30k (CLIP ViT-B/32, như COCO).
-  3. Bằng chứng E(I) = YOLO  U  {vật thể được >= r trong K câu truy hồi nhắc tới} (r = 3).
-  4. Luật chặn cố định: z' = z - delta * 1[w là từ vật thể COCO, o(w) không thuộc E(I)] tại mỗi bước giải mã (delta = 0 là không chặn).
-  5. Sinh 5 ứng viên (1 beam thường + diverse beam search), chấm CLIP ViT-B/16 và FormulaReranker (0,2 / 0,4 / 0,4).
-  6. Chọn lại câu: ba tín hiệu (S_base, S_align, S_det) và năm tín hiệu (+ 1,0 x S_obj + 0,1 x S_retr, min-max theo ảnh).
+Per image (as in retrieval_logit_bias_experiment.py / sobj_threshold_eval.py, only the data changes to Flickr30k):
+  1. YOLO-World (yolov8l-worldv2, threshold 0.25) -> detected objects.
+  2. Retrieve the K = 5 nearest captions from the Flickr30k TRAIN captions (CLIP ViT-B/32, as for COCO).
+  3. Evidence E(I) = YOLO  U  {objects named by >= r of the K retrieved captions} (r = 3).
+  4. Fixed blocking rule: z' = z - delta * 1[w is a COCO object word, o(w) not in E(I)] at every decoding step (delta = 0 means no blocking).
+  5. Generate 5 candidates (1 plain beam + diverse beam search), score them with CLIP ViT-B/16 and FormulaReranker (0.2 / 0.4 / 0.4).
+  6. Rerank: three signals (S_base, S_align, S_det) and five signals (+ 1.0 x S_obj + 0.1 x S_retr, min-max per image).
 
-Hai giai đoạn, để chia ảnh cho tối đa 2 tiến trình song song:
-  run    sinh câu ứng viên cho một đoạn ảnh với một danh sách delta, lưu ra "mảnh" JSON (có thể --resume).
-  merge  gộp các mảnh, tính BLEU/METEOR/ROUGE-L/CIDEr(/SPICE) và CHAIRs/CHAIRi cho từng delta và từng cách chọn lại câu;
-         với --select, chọn delta theo quy tắc của bài (CHAIRs thấp nhất trong các delta mà CIDEr không thấp hơn delta = 0 quá 1 điểm).
+Two stages, so the images can be split over at most 2 parallel processes:
+  run    generate candidates for a range of images and a list of deltas, saved as a JSON "part" (supports --resume).
+  merge  merge the parts, compute BLEU/METEOR/ROUGE-L/CIDEr(/SPICE) and CHAIRs/CHAIRi per delta and per reranking rule.
+         With --select, choose delta by the paper's rule (lowest CHAIRs among the deltas whose CIDEr is at most 1 point below delta = 0).
 
-Khác COCO: Flickr30k không có COCO instances nên CHAIR dùng nhãn đúng rút từ 5 caption tham chiếu của ảnh (con số cao hơn, KHÔNG so
-trực tiếp với CHAIR trên COCO). Kho truy hồi là caption của tập train Flickr30k, không phải COCO.
+Unlike COCO: Flickr30k has no COCO instances, so CHAIR takes the ground truth from the 5 reference captions of each image (higher values, NOT
+directly comparable with CHAIR on COCO). The retrieval store is the Flickr30k train captions, not COCO.
 
-Ví dụ (từ thư mục gốc của repo, Python có torch + transformers + ultralytics; Java cho METEOR):
-    # 1) chọn delta trên tập val (1.000 ảnh đầu, 2 mảnh chạy song song)
+Examples (from the repo root, Python with torch + transformers + ultralytics, Java for METEOR):
+    # 1) choose delta on val (first 1,000 images, 2 parts in parallel)
     python eval/flickr30k_eval.py run --split val --start 0   --max-images 500 --deltas 0 1 2 3 4 \\
         --checkpoint flickr30k_..._best_model.pth --vocab-file flickr30k_..._vocab.json --output results/f30k_val_part0.json
     python eval/flickr30k_eval.py run --split val --start 500 --max-images 500 --deltas 0 1 2 3 4 ... --output results/f30k_val_part500.json
     python eval/flickr30k_eval.py merge --parts results/f30k_val_part0.json results/f30k_val_part500.json \\
         --select --output results/f30k_val_eval.json
-    # 2) chạy test với delta đã chọn (ví dụ 3) và delta = 0 để so
+    # 2) run test with the chosen delta (e.g. 3) and delta = 0 for comparison
     python eval/flickr30k_eval.py run --split test --deltas 0 3 ... --output results/f30k_test_part0.json
     python eval/flickr30k_eval.py merge --parts results/f30k_test_part*.json --output results/f30k_test_eval.json
 """
@@ -47,7 +47,7 @@ sys.path.insert(0, str(HERE))
 
 DATASET = ROOT / "dataset"
 FLICKR = DATASET / "flickr30k"
-SPLIT_SIZES = (29000, 1014, 1000)   # train / val / test của Karpathy; dùng khi chỉ có file caption (chia ngẫu nhiên, giống notebook)
+SPLIT_SIZES = (29000, 1014, 1000)   # Karpathy train / val / test, used when only a caption file exists (random split, as in the notebook)
 SEED = 42
 
 
@@ -55,9 +55,9 @@ def log(msg: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-# ------------------------------------------------------------------ dữ liệu Flickr30k
+# ------------------------------------------------------------------ Flickr30k data
 def load_meta(karpathy_json: Path | None, captions_file: Path | None) -> list[dict]:
-    """[{filename, split, sents}]: dataset_flickr30k.json (Karpathy) hoặc captions.txt/results.csv chia ngẫu nhiên như notebook."""
+    """[{filename, split, sents}]: dataset_flickr30k.json (Karpathy) or captions.txt/results.csv split at random as in the notebook."""
     meta: list[dict] = []
     if karpathy_json and karpathy_json.is_file():
         data = json.loads(karpathy_json.read_text(encoding="utf-8"))
@@ -65,7 +65,7 @@ def load_meta(karpathy_json: Path | None, captions_file: Path | None) -> list[di
             sents = [s["raw"] if "raw" in s else " ".join(s.get("tokens", [])) for s in img.get("sentences", [])]
             if img.get("filename") and sents:
                 meta.append({"filename": img["filename"], "split": img.get("split"), "sents": sents})
-        log(f"split Karpathy từ {karpathy_json}")
+        log(f"Karpathy split from {karpathy_json}")
         return meta
     if captions_file and captions_file.is_file():
         by_image: dict[str, list[str]] = {}
@@ -83,26 +83,26 @@ def load_meta(karpathy_json: Path | None, captions_file: Path | None) -> list[di
             split = "train" if i < n_tr else "val" if i < n_tr + n_va else "test" if i < n_tr + n_va + n_te else None
             if split:
                 meta.append({"filename": name, "split": split, "sents": by_image[name]})
-        log(f"CHIA NGẪU NHIÊN từ {captions_file} (không phải split Karpathy; phải trùng cách chia lúc train)")
+        log(f"RANDOM SPLIT from {captions_file} (not the Karpathy split, it must match the split used for training)")
         return meta
-    raise SystemExit("Không thấy --karpathy-json (dataset_flickr30k.json) hay --captions-file (captions.txt/results.csv).")
+    raise SystemExit("Neither --karpathy-json (dataset_flickr30k.json) nor --captions-file (captions.txt/results.csv) was found.")
 
 
 def retrieval_bank(clip, meta: list[dict], cache_dir: Path) -> tuple[list[str], np.ndarray]:
-    """Kho truy hồi: mọi caption của tập train Flickr30k (viết thường), mã hóa bằng CLIP ViT-B/32, lưu cache."""
+    """Retrieval store: every Flickr30k train caption (lowercased), encoded with CLIP ViT-B/32 and cached."""
     cache_dir.mkdir(parents=True, exist_ok=True)
     caps_f, emb_f = cache_dir / "train_captions.json", cache_dir / "train_caption_emb_b32.npy"
     if caps_f.is_file() and emb_f.is_file():
         return json.loads(caps_f.read_text(encoding="utf-8")), np.load(emb_f)
     caps = [s.strip().lower() for m in meta if m["split"] == "train" for s in m["sents"]]
-    log(f"mã hóa kho truy hồi: {len(caps)} caption train")
+    log(f"encoding the retrieval store: {len(caps)} train captions")
     emb = clip.text(caps)
     caps_f.write_text(json.dumps(caps), encoding="utf-8")
     np.save(emb_f, emb)
     return caps, emb
 
 
-# ------------------------------------------------------------------ chặn logits khi giải mã
+# ------------------------------------------------------------------ logit blocking during decoding
 CURRENT_BIAS: torch.Tensor | None = None
 
 
@@ -122,7 +122,7 @@ IRREGULAR = {"men": "man", "women": "woman", "kids": "kid", "guys": "guy", "mice
 
 
 def vocab_object_map(vocab: dict[str, int], objects: set[str], inv: dict[str, str]) -> dict[int, str]:
-    """id token -> lớp COCO chuẩn, cho các từ vật thể một token trong từ điển (như retrieval_logit_bias_experiment.py)."""
+    """token id -> canonical COCO class, for single-token object words of the vocabulary (as in retrieval_logit_bias_experiment.py)."""
     import chair_metric
 
     lem = chair_metric._LEMMATIZER
@@ -134,11 +134,11 @@ def vocab_object_map(vocab: dict[str, int], objects: set[str], inv: dict[str, st
     return out
 
 
-# ------------------------------------------------------------------ giai đoạn run
+# ------------------------------------------------------------------ run stage
 def cmd_run(args) -> None:
     global CURRENT_BIAS
     if args.device == "cpu":
-        torch.cuda.is_available = lambda: False   # các module của pipeline tự chọn thiết bị bằng hàm này
+        torch.cuda.is_available = lambda: False   # the pipeline modules pick their device through this function
     import chair_metric
     import vocab as vocab_mod
     from clipscore import ClipScorer
@@ -151,21 +151,21 @@ def cmd_run(args) -> None:
     meta = load_meta(args.karpathy_json, args.captions_file)
     split_meta = [m for m in meta if m["split"] == args.split][args.start: args.start + args.max_images]
     if not split_meta:
-        raise SystemExit(f"Split '{args.split}' không có ảnh nào trong khoảng đã chọn.")
+        raise SystemExit(f"Split '{args.split}' has no images in the selected range.")
     image_dir = args.image_dir
     paths = [image_dir / m["filename"] for m in split_meta]
     missing = [p.name for p in paths if not p.is_file()]
     if missing:
-        raise SystemExit(f"Thiếu {len(missing)} ảnh trong {image_dir}, ví dụ {missing[:3]}")
+        raise SystemExit(f"{len(missing)} images missing in {image_dir}, e.g. {missing[:3]}")
 
     objects_set, inv = chair_metric.load_synonyms()
     clip32 = Clip()
     caps, bank_emb = retrieval_bank(clip32, meta, args.cache_dir)
 
-    # --- bằng chứng (không phụ thuộc delta): YOLO-World + K câu truy hồi
+    # --- evidence (independent of delta): YOLO-World + K retrieved captions
     extractor = YoloObjectExtractor(str(args.yolo_model), args.conf, args.max_objects)
     vocab_mod.set_object_noun_vocab(extractor.class_names())
-    log(f"YOLO-World trên {len(paths)} ảnh")
+    log(f"YOLO-World on {len(paths)} images")
     yolo_objs = [extractor.extract(p) for p in paths]
     img_emb = torch.from_numpy(clip32.images(paths)).to(clip32.device)
     bank_t = torch.from_numpy(bank_emb).to(clip32.device)
@@ -180,10 +180,10 @@ def cmd_run(args) -> None:
         maj = {o for o, n in counts.items() if n >= args.maj}
         evidence.append({"yolo": sorted(yolo), "counts": dict(counts), "support": yolo | maj})
 
-    # --- mô hình sinh câu, CLIP ViT-B/16 và bộ chọn lại câu
+    # --- caption model, CLIP ViT-B/16 and the reranker
     vocab = json.loads(args.vocab_file.read_text(encoding="utf-8"))
     tok2obj = vocab_object_map(vocab, objects_set, inv)
-    log(f"{len(tok2obj)} token trong từ điển ứng với vật thể COCO")
+    log(f"{len(tok2obj)} vocabulary tokens map to COCO objects")
     install_logit_bias()
     generator = CandidateCaptionGenerator(
         checkpoint_path=args.checkpoint, vocab_path=args.vocab_file, max_candidates=5, num_beams=10,
@@ -198,7 +198,7 @@ def cmd_run(args) -> None:
         old = json.loads(args.output.read_text(encoding="utf-8"))
         if old.get("images") == out["images"] and old.get("start") == out["start"]:
             out["runs"] = old["runs"]
-            log("resume: " + ", ".join(f"delta {d}: {len(r['rows'])} ảnh" for d, r in out["runs"].items()))
+            log("resume: " + ", ".join(f"delta {d}: {len(r['rows'])} images" for d, r in out["runs"].items()))
 
     for delta in args.deltas:
         key = f"{delta:g}"
@@ -234,21 +234,21 @@ def cmd_run(args) -> None:
             n = i + 1 - done0
             if n % args.save_every == 0:
                 args.output.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
-                log(f"  delta={key}: {i + 1}/{len(split_meta)} ({(time.time() - t0) / n:.2f}s/ảnh)")
+                log(f"  delta={key}: {i + 1}/{len(split_meta)} ({(time.time() - t0) / n:.2f}s/image)")
         CURRENT_BIAS = None
         args.output.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
-        log(f"xong delta={key} ({len(run['rows'])} ảnh)")
+        log(f"done delta={key} ({len(run['rows'])} images)")
     log(f"wrote {args.output}")
 
 
-# ------------------------------------------------------------------ giai đoạn merge
+# ------------------------------------------------------------------ merge stage
 def minmax(v: np.ndarray) -> np.ndarray:
     lo, hi = v.min(), v.max()
     return np.full_like(v, 0.5) if hi - lo < 1e-9 else (v - lo) / (hi - lo)
 
 
 def pick(rows: list[dict], mode: str, thr: int = 3, lam_obj: float = 1.0, lam_retr: float = 0.1) -> list[str]:
-    """mode 'first' = câu beam thường, 'three' = ba tín hiệu, 'five' = năm tín hiệu (S_obj ngưỡng thr/K, S_retr)."""
+    """mode 'first' = plain beam caption, 'three' = three signals, 'five' = five signals (S_obj threshold thr/K, S_retr)."""
     out = []
     for r in rows:
         cands = r["candidates"]
@@ -287,20 +287,20 @@ def cmd_merge(args) -> None:
         gt = {r["image"]: chair_metric.ground_truth_from_captions(r["references"], objects_set, inv) for r in rows}
         m = compute_metrics(preds, refs, use_meteor=not args.no_meteor, use_cider=True, use_spice=spice, tokenizer="simple")
         ch = chair_metric.compute_chair({r["image"]: p for r, p in zip(rows, preds)}, gt, objects_set, inv)
-        res = {k: round(float(v) * (100 if k == "CIDEr" else 1), 2) for k, v in m.items()}   # như sobj_threshold_eval.py
+        res = {k: round(float(v) * (100 if k == "CIDEr" else 1), 2) for k, v in m.items()}   # as in sobj_threshold_eval.py
         res.update(CHAIRs=round(ch["CHAIRs"], 2), CHAIRi=round(ch["CHAIRi"], 2),
                    mean_len=round(float(np.mean([len(p.split()) for p in preds])), 2))
         log(str(res))
         return res
 
     configs = [("before_rerank", "first", 0)] + [("three_score", "three", 0)] + [(f"five_score_{t}of{info['k']}", "five", t) for t in args.thresholds]
-    result = {**info, "gt": "5 caption tham chiếu (Flickr30k không có COCO instances)", "deltas": {}}
+    result = {**info, "gt": "5 reference captions (Flickr30k has no COCO instances)", "deltas": {}}
     order = None
     for key in sorted(runs, key=lambda x: float(x)):
         rows_by_img = runs[key]["rows"]
         order = order or list(rows_by_img)
         rows = [rows_by_img[i] for i in order if i in rows_by_img]
-        log(f"delta = {key}: {len(rows)} ảnh")
+        log(f"delta = {key}: {len(rows)} images")
         entry = {"images": len(rows)}
         for name, mode, thr in configs:
             entry[name] = score(rows, pick(rows, mode, thr, args.lam_obj, args.lam_retr), args.spice and name == args.spice_on)
@@ -310,13 +310,13 @@ def cmd_merge(args) -> None:
         sel_key = args.select_on
         base_key = "0"
         if base_key not in result["deltas"]:
-            raise SystemExit("--select cần có delta = 0 trong các mảnh để làm mốc CIDEr.")
+            raise SystemExit("--select needs delta = 0 in the parts as the CIDEr reference.")
         ref_cider = result["deltas"][base_key][sel_key]["CIDEr"]
         ok = {k: v for k, v in result["deltas"].items() if float(k) > 0 and v[sel_key]["CIDEr"] >= ref_cider - args.max_cider_drop}
-        result["selection"] = {"rule": f"CHAIRs thấp nhất sau '{sel_key}' trong các delta > 0 có CIDEr >= {ref_cider} - {args.max_cider_drop}",
+        result["selection"] = {"rule": f"lowest CHAIRs after '{sel_key}' among deltas > 0 with CIDEr >= {ref_cider} - {args.max_cider_drop}",
                                "eligible": sorted(ok, key=float),
                                "chosen": min(ok, key=lambda k: (ok[k][sel_key]["CHAIRs"], -ok[k][sel_key]["CIDEr"])) if ok else None}
-        log(f"chọn delta: {result['selection']}")
+        log(f"chosen delta: {result['selection']}")
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     log(f"wrote {args.output}")
     print_table(result)
@@ -324,7 +324,7 @@ def cmd_merge(args) -> None:
 
 def print_table(result: dict) -> None:
     cols = ["BLEU-4", "METEOR", "ROUGE-L", "CIDEr", "SPICE", "CHAIRs", "CHAIRi"]
-    print("\n" + f"{'delta':>6} {'cách chọn câu':<18}" + "".join(f"{c:>9}" for c in cols))
+    print("\n" + f"{'delta':>6} {'selection':<18}" + "".join(f"{c:>9}" for c in cols))
     for key, entry in result["deltas"].items():
         for name, vals in entry.items():
             if isinstance(vals, dict):
@@ -335,22 +335,22 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    r = sub.add_parser("run", help="sinh ứng viên cho một đoạn ảnh với các delta")
+    r = sub.add_parser("run", help="generate candidates for a range of images and deltas")
     r.add_argument("--split", choices=["val", "test"], required=True)
     r.add_argument("--start", type=int, default=0)
-    r.add_argument("--max-images", type=int, default=100000, help="số ảnh của mảnh này (chia mảnh cho 2 tiến trình)")
-    r.add_argument("--deltas", type=float, nargs="+", default=[0.0, 3.0], help="mức chặn delta; 0 = không chặn")
+    r.add_argument("--max-images", type=int, default=100000, help="number of images in this part (split across 2 processes)")
+    r.add_argument("--deltas", type=float, nargs="+", default=[0.0, 3.0], help="blocking strength delta, 0 = no blocking")
     r.add_argument("--checkpoint", type=Path, required=True)
     r.add_argument("--vocab-file", type=Path, required=True)
     r.add_argument("--karpathy-json", type=Path, default=FLICKR / "dataset_flickr30k.json")
-    r.add_argument("--captions-file", type=Path, default=None, help="dự phòng nếu không có Karpathy json (phải khớp cách chia lúc train)")
+    r.add_argument("--captions-file", type=Path, default=None, help="fallback when there is no Karpathy json (must match the training split)")
     r.add_argument("--image-dir", type=Path, default=FLICKR / "images")
     r.add_argument("--cache-dir", type=Path, default=ROOT / "results" / "flickr30k_cache")
     r.add_argument("--yolo-model", type=Path, default=Path("yolov8l-worldv2.pt"))
     r.add_argument("--conf", type=float, default=0.25)
     r.add_argument("--max-objects", type=int, default=20)
-    r.add_argument("--k", type=int, default=5, help="số câu truy hồi")
-    r.add_argument("--maj", type=int, default=3, help="ngưỡng đa số r dùng cho bằng chứng khi chặn logits")
+    r.add_argument("--k", type=int, default=5, help="number of retrieved captions")
+    r.add_argument("--maj", type=int, default=3, help="majority threshold r for the blocking evidence")
     r.add_argument("--weights", type=float, nargs=3, default=(0.2, 0.4, 0.4), metavar=("ALPHA", "BETA", "GAMMA"))
     r.add_argument("--device", choices=["cuda", "cpu"], default="cuda")
     r.add_argument("--resume", action="store_true")
@@ -358,17 +358,17 @@ def main() -> None:
     r.add_argument("--output", type=Path, required=True)
     r.set_defaults(fn=cmd_run)
 
-    m = sub.add_parser("merge", help="gộp các mảnh và tính chỉ số")
+    m = sub.add_parser("merge", help="merge the parts and compute the metrics")
     m.add_argument("--parts", type=Path, nargs="+", required=True)
     m.add_argument("--output", type=Path, required=True)
-    m.add_argument("--thresholds", type=int, nargs="+", default=[3, 1], help="ngưỡng r của S_obj cho bộ năm tín hiệu")
+    m.add_argument("--thresholds", type=int, nargs="+", default=[3, 1], help="S_obj thresholds r for the five-signal reranker")
     m.add_argument("--lam-obj", type=float, default=1.0)
     m.add_argument("--lam-retr", type=float, default=0.1)
-    m.add_argument("--no-meteor", action="store_true", help="bỏ METEOR (nếu không có Java)")
-    m.add_argument("--spice", action="store_true", help="tính thêm SPICE (Java 8, chậm), chỉ cho cách chọn câu --spice-on")
+    m.add_argument("--no-meteor", action="store_true", help="skip METEOR (without Java)")
+    m.add_argument("--spice", action="store_true", help="also compute SPICE (Java 8, slow), only for the --spice-on selection")
     m.add_argument("--spice-on", default="five_score_3of5")
-    m.add_argument("--select", action="store_true", help="chọn delta theo quy tắc của bài (chạy trên tập val)")
-    m.add_argument("--select-on", default="three_score", help="cách chọn câu dùng để chọn delta (bài dùng bộ ba tín hiệu)")
+    m.add_argument("--select", action="store_true", help="choose delta by the paper's rule (run on val)")
+    m.add_argument("--select-on", default="three_score", help="selection used to choose delta (the paper uses the three signals)")
     m.add_argument("--max-cider-drop", type=float, default=1.0)
     m.set_defaults(fn=cmd_merge)
 

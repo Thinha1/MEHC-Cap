@@ -1,14 +1,14 @@
-"""Chấm lại file kết quả của notebook coco2014-eval-reranking (chạy trên Kaggle) bằng CPU, thêm SPICE.
+"""Re-score a result file of the coco2014-eval-reranking notebook (run on Kaggle) on CPU and add SPICE.
 
-File lưu sẵn câu được chọn theo từng ảnh; script chấm hai điểm: before_rerank (baseline_candidate) và five_score
-(caption_five_score). Script tính lại BLEU-1..4, METEOR, ROUGE-L, CIDEr, CHAIRs, CHAIRi đúng như hàm score()
-của notebook và đối chiếu với metrics đã lưu trong file. Thêm --spice để tính SPICE, lấy từ spice_per_caption.py: mỗi cặp
-(ảnh, câu) chấm một lần bằng Java 8, chỉ cho hai câu được chọn của mỗi ảnh, có checkpoint theo từng phần.
+The file stores the selected caption of every image. The script scores two points: before_rerank (baseline_candidate) and five_score
+(caption_five_score). It recomputes BLEU-1..4, METEOR, ROUGE-L, CIDEr, CHAIRs and CHAIRi exactly as the score() function
+of the notebook and checks them against the metrics stored in the file. --spice adds SPICE through spice_per_caption.py: each
+(image, caption) pair is scored once with Java 8, only for the two selected captions of each image, with checkpoints per chunk.
 
-Chạy (thư mục gốc của repo, cần Java cho METEOR, Java 8 cho SPICE):
+Usage (from the repo root, Java for METEOR, Java 8 for SPICE):
     python eval/eval_notebook_json.py results/kaggle/eval_rerank_<ckpt>_d0_test.json
     python eval/eval_notebook_json.py <file1>.json <file2>.json --spice
-Ghi <file>_cpu_eval.json cạnh file đầu vào. SPICE từng câu lưu ở <file>_spice_per_caption.json, chạy lại thì dùng lại.
+Writes <file>_cpu_eval.json next to the input. Per-caption SPICE is saved in <file>_spice_per_caption.json and reused on a rerun.
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def evaluate(path: Path, spice: bool, objects, inv, fn2id, inst) -> dict:
     if spice:
         per = path.with_name(path.stem + "_spice_per_caption.json")
         if not per.is_file():
-            # chỉ gửi câu được chọn (không chấm cả 5 ứng viên): spice_per_caption đọc baseline_candidate, caption, candidates
+            # send only the selected captions (not all 5 candidates): spice_per_caption reads baseline_candidate, caption, candidates
             sub = path.with_name(path.stem + "_spice_input.json")
             sub.write_text(json.dumps({"rows": [{"image": r["image"], "references": r["references"], "candidates": [],
                                                  "baseline_candidate": r["baseline_candidate"], "caption": r["caption_five_score"]}
@@ -55,17 +55,17 @@ def evaluate(path: Path, spice: bool, objects, inv, fn2id, inst) -> dict:
     out = {}
     for name, key in SELECTIONS.items():
         if key not in rows[0]:
-            print(f"[!] {path.name}: thiếu trường {key}, bỏ qua {name}")
+            print(f"[!] {path.name}: field {key} is missing, skipping {name}")
             continue
         caps = [r[key] for r in rows]
         m = compute_metrics(caps, refs, use_meteor=True, use_cider=True, use_spice=False, tokenizer="simple")
         ch = chair_metric.compute_chair({r["image"]: c for r, c in zip(rows, caps)}, gt, objects, inv)
-        res = {k: round(float(v) * (100 if k == "CIDEr" else 1), 2) for k, v in m.items()}   # như score() của notebook
+        res = {k: round(float(v) * (100 if k == "CIDEr" else 1), 2) for k, v in m.items()}   # as in the notebook's score()
         res.update(CHAIRs=round(ch["CHAIRs"], 2), CHAIRi=round(ch["CHAIRi"], 2))
         if sp is not None:
             res["SPICE"] = round(100 * float(np.mean([sp[r["image"]][simple_standardize(c)] for r, c in zip(rows, caps)])), 2)
         diff = {k: (stored[name][k], res[k]) for k in stored.get(name, {}) if k in res and abs(stored[name][k] - res[k]) > 0.011}
-        print(f"{name:14s}", {k: res.get(k) for k in KEYS if k in res}, "| khớp metrics đã lưu" if not diff else f"| [!] lệch {diff}")
+        print(f"{name:14s}", {k: res.get(k) for k in KEYS if k in res}, "| matches the stored metrics" if not diff else f"| [!] differs {diff}")
         out[name] = res
     return {"source": path.name, "delta": (data.get("run") or {}).get("delta"), "images": len(rows), "metrics": out}
 
@@ -73,7 +73,7 @@ def evaluate(path: Path, spice: bool, objects, inv, fn2id, inst) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("files", nargs="+", type=Path)
-    ap.add_argument("--spice", action="store_true", help="thêm SPICE (Java 8, khoảng 30 phút mỗi file)")
+    ap.add_argument("--spice", action="store_true", help="add SPICE (Java 8, about 30 minutes per file)")
     args = ap.parse_args()
 
     objects, inv = chair_metric.load_synonyms()
@@ -84,7 +84,7 @@ def main() -> None:
         res = evaluate(f, args.spice, objects, inv, fn2id, inst)
         out = f.with_name(f.stem + "_cpu_eval.json")
         out.write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
-        print(f"Đã lưu {out}")
+        print(f"Saved {out}")
 
 
 if __name__ == "__main__":

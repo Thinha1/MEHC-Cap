@@ -1,6 +1,6 @@
 # References of MEHC-Cap
 
-The 47 references of the manuscript, numbered in order of first citation. The same entries are in BibTeX form in [`../references.bib`](../references.bib). The `Link` column is the DOI, or the arXiv or ACL Anthology page when the paper has no DOI.
+The 46 references of the manuscript, numbered in order of first citation. The same entries are in BibTeX form in [`../references.bib`](../references.bib). The `Link` column is the DOI, or the arXiv or ACL Anthology page when the paper has no DOI.
 
 | # | Reference | Link |
 |---|---|---|
@@ -21,7 +21,6 @@ The 47 references of the manuscript, numbered in order of first citation. The sa
 | [15] | J. Hessel, A. Holtzman, M. Forbes, R. Le Bras, and Y. Choi, “CLIPScore: A Reference-free Evaluation Metric for Image Captioning,” in EMNLP, 2021, pp. 7514–7528. | [link](https://doi.org/10.18653/v1/2021.emnlp-main.595) |
 | [16] | J. Devlin et al., “Exploring Nearest Neighbor Approaches for Image Captioning,” arXiv:1505.04467, 2015, doi: 10.48550/arXiv.1505.04467. | [link](https://doi.org/10.48550/arXiv.1505.04467) |
 | [17] | K. Jeong, W. Lee, W. Nam, M. Ma, and P. Kang, “Technical Report of NICE Challenge at CVPR 2024: Caption Re-ranking Evaluation Using Ensembled CLIP and Consensus Scores,” in Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops, 2024, pp. 7366–7372. | [link](https://doi.org/10.1109/cvprw63382.2024.00732) |
-| [18] | N. S. D. Ladu, B. Turyasingura, B. Willbroad, and A. Atuhaire, “The Rise of Transformers – Redefining the Landscape of Artificial Intelligence,” Babylonian Journal of Artificial Intelligence, vol. 2025, pp. 72–76, 2025, doi: 10.58496/BJAI/2025/007. | [link](https://doi.org/10.58496/BJAI/2025/007) |
 | [19] | P. Zhang et al., “VinVL: Revisiting Visual Representations in Vision-Language Models,” in CVPR, 2021, pp. 5575–5584. | [link](https://doi.org/10.1109/cvpr46437.2021.00553) |
 | [20] | R. Mokady, A. Hertz, and A. H. Bermano, “ClipCap: CLIP Prefix for Image Captioning,” arXiv:2111.09734, 2021, doi: 10.48550/arXiv.2111.09734. | [link](https://doi.org/10.48550/arXiv.2111.09734) |
 | [21] | N. V. Thinh, T. V. Lang, and V. T. Thanh, “OD-VR-Cap: Image Captioning Based on Detecting and Predicting Relationships Between Objects,” Journal of Computer Science and Cybernetics, vol. 40, no. 4, pp. 327–346, 2024, doi: 10.15625/1813-9663/20929. | [link](https://doi.org/10.15625/1813-9663/20929) |

@@ -1,7 +1,7 @@
-# Chạy cả frontend lẫn backend trong một container:
+# Run the frontend and the backend in one container:
 #   docker compose up --build
-# Mở http://localhost:3000 (giao diện), http://localhost:8000/docs (API).
-# Mô hình đặt trong ./backend/weights (xem backend/README.md), được mount chỉ đọc.
+# Open http://localhost:3000 (UI), http://localhost:8000/docs (API).
+# Models live in ./backend/weights (see backend/README.md) and are mounted read-only.
 
 services:
   webapp:
@@ -9,7 +9,7 @@ services:
     build:
       context: .
       args:
-        # Đổi thành http://<ip-may-chu>:8000 nếu mở giao diện từ máy khác
+        # Change to http://<host-ip>:8000 to open the UI from another machine
         NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
         TORCH_CUDA_TAG: cu121
     ports:

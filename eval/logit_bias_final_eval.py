@@ -36,17 +36,17 @@ def main() -> None:
     ap.add_argument("--parts", type=Path, nargs="+", required=True)
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--base-report", type=Path, default=TEST_REPORT, help="unbiased --run-pipeline report (one per seed)")
-    ap.add_argument("--spice", action="store_true", help="tính thêm SPICE (Java 8, không dùng cache LMDB ~98GB)")
+    ap.add_argument("--spice", action="store_true", help="also compute SPICE (Java 8, without the ~98 GB LMDB cache)")
     ap.add_argument("--spice-sides", default="biased",
-                    help="bên nào tính SPICE khi có --spice: 'biased', 'base' hoặc 'base,biased' (mỗi điểm ~30k câu)")
+                    help="which side gets SPICE with --spice: 'biased', 'base' or 'base,biased' (~30k captions per point)")
     ap.add_argument("--merged", type=Path, default=ROOT / "results" / "logit_bias_gamma1_test_report.json",
                     help="where to save the biased run as a report")
     args = ap.parse_args()
 
     base_report = args.base_report.resolve()
     base_data = json.loads(base_report.read_text(encoding="utf-8"))
-    # Mốc có thể là report --run-pipeline ("rows") hoặc một lượt retrieval_logit_bias_experiment --save-rows ("runs"),
-    # vd model evgate chạy với lớp chặn tắt (--configs 0,0).
+    # The reference can be a --run-pipeline report ("rows") or a retrieval_logit_bias_experiment --save-rows run ("runs"),
+    # e.g. a model run with blocking off (--configs 0,0).
     base_rows = base_data["rows"] if "rows" in base_data else \
         [r for r in base_data["runs"] if r["config"] != "report"][0]["rows"]
     biased, config = {}, None

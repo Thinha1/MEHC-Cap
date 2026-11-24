@@ -1,8 +1,8 @@
-"""Ngưỡng bằng chứng của S_obj trên tập kiểm tra: vật thể được miễn phạt khi YOLO thấy hoặc ít nhất r trong K = 5
-câu truy hồi nhắc tới (r = 1 là cấu hình đang dùng, tái lập số của signal_table.py; r = 3 là biến thể đa số).
-Trọng số giữ như cũ: w_obj = 1, w_retr = 0.1.
+"""Evidence threshold of S_obj on the test split: an object is not penalised when YOLO detects it or at least r of the K = 5
+retrieved captions name it (r = 1 reproduces signal_table.py, r = 3 is the majority variant used in the paper).
+Weights: w_obj = 1, w_retr = 0.1.
 
-Chạy (thư mục gốc của repo):
+Usage (from the repo root):
     python eval/sobj_threshold_eval.py --report results/e35_k6_yoloworld_merged.json \
         --output results/e35_k6_sobj_threshold_test.json
 """
@@ -32,11 +32,11 @@ def main() -> None:
     ap.add_argument("--report", type=Path, required=True)
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--evidence", choices=["union", "yolo", "retr"], default="union",
-                    help="nguồn bằng chứng E(I) của S_obj: union = YOLO ∪ truy hồi (mặc định), yolo = chỉ YOLO, retr = chỉ truy hồi")
+                    help="evidence source E(I) of S_obj: union = YOLO ∪ retrieval (default), yolo = YOLO only, retr = retrieval only")
     ap.add_argument("--thresholds", type=int, nargs="+", default=[1, 3])
     ap.add_argument("--final-only", action="store_true",
-                    help="chỉ chấm cấu hình năm tín hiệu ở các ngưỡng --thresholds (bỏ qua các cấu hình khác, dùng khi chấm SPICE bổ sung)")
-    ap.add_argument("--spice", action="store_true", help="tính thêm SPICE (Java 8, ~2,5 phút mỗi cấu hình)")
+                    help="score only the five-signal configuration at --thresholds (skip the others, used when adding SPICE)")
+    ap.add_argument("--spice", action="store_true", help="also compute SPICE (Java 8, ~2.5 minutes per configuration)")
     args = ap.parse_args()
 
     data = json.loads(args.report.read_text(encoding="utf-8"))
@@ -52,7 +52,7 @@ def main() -> None:
     def objs(t):
         return chair_metric.caption_to_words(t, objects, inv)[1]
 
-    # số câu truy hồi (trong K) nhắc tới mỗi vật thể; YOLO lọc như sretr_experiment (conf >= 0.25)
+    # number of retrieved captions (of K) naming each object; YOLO filtered as in sretr_experiment (conf >= 0.25)
     counts, yolo = [], []
     for r, idx in zip(rows, nb):
         counts.append(Counter(o for j in idx[:K] for o in set(objs(caps[j]))))
@@ -77,8 +77,8 @@ def main() -> None:
         out = {k: round(float(v) * (100 if k == "CIDEr" else 1), 2) for k, v in m.items()}
         out.update(CHAIRs=round(ch["CHAIRs"], 2), CHAIRi=round(ch["CHAIRi"], 2),
                    mean_len=round(float(np.mean([len(c.split()) for c in captions])), 2))
-        # độ phủ đối tượng: số vật thể COCO khác nhau mỗi câu, % câu không nhắc vật thể COCO nào,
-        # recall theo vật thể mà ít nhất một câu tham chiếu nhắc tới (chỉ tính ảnh có vật thể như vậy)
+        # object coverage: distinct COCO objects per caption, % of captions naming no COCO object,
+        # recall of the objects named by at least one reference caption (only images with such objects)
         mentioned = [set(objs(c)) for c in captions]
         rec = [len(m & ro) / len(ro) for m, ro in zip(mentioned, ref_objs) if ro]
         out.update(obj_per_cap=round(float(np.mean([len(m) for m in mentioned])), 3),

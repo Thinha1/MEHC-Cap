@@ -1,7 +1,7 @@
-"""Bảng "hai tín hiệu mới" (ba điểm, +S_retr, +S_obj, cả hai) từ một report/part đã lưu, đủ BLEU-1..4, METEOR,
-ROUGE-L, CIDEr, CHAIRs, CHAIRi trên tập kiểm tra.
+"""Table of the two new signals (three signals, +S_retr, +S_obj, both) from a saved report/part, with BLEU-1..4, METEOR,
+ROUGE-L, CIDEr, CHAIRs and CHAIRi on the test split.
 
-Chạy: python eval/signal_table.py --report results/X_part.json --output results/X_signals.json
+Usage: python eval/signal_table.py --report results/X_part.json --output results/X_signals.json
 """
 from __future__ import annotations
 
@@ -23,11 +23,11 @@ from evaluate_reranked_quality import compute_metrics  # noqa: E402
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--report", type=Path, required=True, help="report ('rows') hoặc part ('runs' có 'rows')")
+    ap.add_argument("--report", type=Path, required=True, help="report ('rows') or part ('runs' with 'rows')")
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--neighbours-from", type=Path, default=ROOT / "results" / "seed43_restval_e10_rerank_test.json")
     ap.add_argument("--retr-weights", type=float, nargs="*", default=[],
-                    help="thêm các dòng +λ_retr·S_retr và năm điểm (λ_retr, 1) với các λ_retr này")
+                    help="add +λ_retr·S_retr and five-signal (λ_retr, 1) rows for these λ_retr values")
     args = ap.parse_args()
 
     data = json.loads(args.report.read_text(encoding="utf-8"))

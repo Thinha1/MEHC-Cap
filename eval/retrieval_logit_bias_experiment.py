@@ -86,13 +86,13 @@ def main() -> None:
     ap.add_argument("--max-images", type=int, default=1000)
     ap.add_argument("--maj", type=int, default=3, help="neighbours (of 5) that must name an object")
     ap.add_argument("--evidence", choices=["union", "yolo", "retr"], default="union",
-                    help="nguồn bằng chứng E(I) của luật chặn: union = YOLO ∪ truy hồi (mặc định), yolo = chỉ YOLO, retr = chỉ truy hồi")
-    ap.add_argument("--configs", nargs="+", default=None, help="beta,gamma pairs (mặc định 0,0 0,1 0,2 0,4 1,2)")
+                    help="evidence source E(I) of the blocking rule: union = YOLO ∪ retrieval (default), yolo = YOLO only, retr = retrieval only")
+    ap.add_argument("--configs", nargs="+", default=None, help="beta,gamma pairs (default 0,0 0,1 0,2 0,4 1,2)")
     ap.add_argument("--gate-scales", default="1",
-                    help="với --gate-checkpoint: các hệ số k nhân vào bảng β đã học, vd '1,2,3' (k = 1 là β gốc)")
+                    help="with --gate-checkpoint: factors k applied to the learned β table, e.g. '1,2,3' (k = 1 is the original β)")
     ap.add_argument("--save-rows", action="store_true", help="also save full report-format rows (all candidates) per run")
     ap.add_argument("--gate-checkpoint", type=Path,
-                    help="checkpoint evgate: dùng bảng β đã học (evidence_gate) thay cho --configs; chạy đúng 1 cấu hình 'gate'")
+                    help="evidence-gate checkpoint: use its learned β table (evidence_gate) instead of --configs and run one 'gate' configuration")
     ap.add_argument("--output", type=Path, required=True)
     args = ap.parse_args()
 
@@ -116,20 +116,20 @@ def main() -> None:
     obj_tok_ids = torch.tensor(sorted(tok2obj), dtype=torch.long)
     log(f"{len(tok2obj)} vocab tokens map to COCO objects")
 
-    # Lớp chặn đã học trong notebook evgate: bias(ảnh) = β[mã bằng chứng của từng vật thể] @ ma trận token->vật thể.
-    # Mã = số câu truy hồi nhắc vật thể + (K + 1) * [YOLO thấy], đúng như EvidenceGate khi train.
+    # Learned blocking layer of the evidence-gate notebook: bias(image) = β[evidence code of each object] @ token->object matrix.
+    # Code = number of retrieved captions naming the object + (K + 1) * [YOLO detects it], as in EvidenceGate at training time.
     gate = None
     if args.gate_checkpoint:
         ck = torch.load(args.gate_checkpoint, map_location="cpu", weights_only=False)
         sd, info = ck["model_state_dict"], ck["evidence_gate"]
         if info["mode"] == "contextual":
-            raise SystemExit("EvidenceGate 'contextual' cần hidden state của decoder, script này chưa hỗ trợ.")
+            raise SystemExit("EvidenceGate 'contextual' needs the decoder hidden states, which this script does not support.")
         g_beta = (-torch.nn.functional.softplus(sd["evidence_gate.beta_raw"]) if "evidence_gate.beta_raw" in sd
                   else sd["evidence_gate.beta"]).float()
         g_tm = sd["evidence_gate.token_matrix"].float()
-        assert g_tm.shape[1] == len(vocab), f"token_matrix {tuple(g_tm.shape)} không khớp vocab {len(vocab)}"
+        assert g_tm.shape[1] == len(vocab), f"token_matrix {tuple(g_tm.shape)} does not match vocab {len(vocab)}"
         gate = {"beta": g_beta, "tm": g_tm, "objects": info["objects"], "k": info["retr_k"], "yolo": info["use_yolo"]}
-        # Cấu hình "gate*k": dùng k·β. --configs (nếu có) chạy thêm sau, cùng model.
+        # "gate*k" configuration: uses k·β. --configs (if any) run afterwards with the same model.
         args.configs = [f"gate*{k}" for k in args.gate_scales.split(",")] + (args.configs or [])
         log(f"gate {info['mode']}: β = {[round(v, 3) for v in g_beta.tolist()]} | {int(g_tm.sum())} token, YOLO={gate['yolo']}")
 

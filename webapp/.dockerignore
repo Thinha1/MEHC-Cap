@@ -1,4 +1,4 @@
-# Mô hình mount qua volume, không đưa vào ngữ cảnh build
+# Models are mounted as a volume, keep them out of the build context
 backend/weights
 backend/uploads
 **/node_modules

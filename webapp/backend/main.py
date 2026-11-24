@@ -63,16 +63,16 @@ async def lifespan(app: FastAPI):
     engines.default_model_id = default_id
     engines.get_generator(default_id)
 
-    # Nạp sẵn các checkpoint còn lại và kho truy hồi để người dùng khỏi phải bấm "Nạp kho" hay
-    # chờ lần đổi mô hình đầu tiên. Tắt bằng PRELOAD_ALL_MODELS=0 / AUTO_LOAD_RETRIEVAL=0.
+    # Preload the other checkpoints and the retrieval store so the user does not have to click "Load store" or
+    # wait for the first model switch. Turn off with PRELOAD_ALL_MODELS=0 / AUTO_LOAD_RETRIEVAL=0.
     if os.getenv("PRELOAD_ALL_MODELS", "1") != "0":
         for model_id in engines.caption_models:
             engines.get_generator(model_id)
     if os.getenv("AUTO_LOAD_RETRIEVAL", "1") != "0":
         try:
             engines.retrieval.load()
-        except Exception as exc:  # thiếu file kho thì vẫn cho server lên, nạp tay sau trên giao diện
-            print(f"[!] Không tự nạp được kho truy hồi: {exc}")
+        except Exception as exc:  # a missing store file still lets the server start, it can be loaded later from the UI
+            print(f"[!] Could not auto-load the retrieval store: {exc}")
 
     yield
 

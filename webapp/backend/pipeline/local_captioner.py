@@ -80,8 +80,8 @@ class ImageCaptioningTransformer(nn.Module):
 
 
 def align_clip_vision_keys(state_dict: dict, expected_keys) -> dict:
-    """transformers bản mới lưu CLIPVisionModel không có tiền tố "vision_model." (checkpoint train trên Kaggle),
-    bản cũ thì có. Đổi tên khoá encoder.clip_vision.* theo đúng kiểu model đang chạy mong đợi."""
+    """Recent transformers versions save CLIPVisionModel without the "vision_model." prefix (checkpoints trained on Kaggle),
+    older versions keep it. Rename the encoder.clip_vision.* keys to what the running model expects."""
     expected = set(expected_keys)
     head, inner = "encoder.clip_vision.", "encoder.clip_vision.vision_model."
     out = {}
@@ -203,23 +203,23 @@ class LocalCheckpointCaptioner:
         state_dict = checkpoint.get("model_state_dict", checkpoint)
         if any(key.startswith("module.") for key in state_dict):
             state_dict = {key.replace("module.", "", 1): value for key, value in state_dict.items()}
-        # Số lớp decoder lấy từ chính checkpoint (2 hoặc 3...), tránh strict=False bỏ lặng lớp thừa.
+        # The number of decoder layers comes from the checkpoint itself (2, 3...), so strict=False cannot silently drop layers.
         layer_ids = {int(k.split(".")[2]) for k in state_dict if k.startswith("transformer_decoder.layers.")}
         num_layers = max(layer_ids) + 1 if layer_ids else NUM_LAYERS
         model = ImageCaptioningTransformer(
             vocab_size=len(self.vocab), num_layers=num_layers, clip_source=self.clip_source
         ).to(self.device)
-        # strict=False: checkpoint tu cac ablation co them tham so (vd image_proj/text_proj cua
-        # contrastive loss trong N009/N010, xem research/) khong ton tai trong kien truc suy dien
-        # o day (khong can cho inference/generate) - bo qua thay vi crash. In canh bao neu co
-        # missing/unexpected key ngoai du kien de de phat hien loi that (vd nham file checkpoint).
+        # strict=False: checkpoints from ablations carry extra parameters (e.g. image_proj/text_proj of the
+        # contrastive loss) that do not exist in the inference architecture
+        # here (not needed for inference/generation) - ignore them instead of crashing. Print a warning if any
+        # missing or unexpected key, so that real loading errors (e.g. a wrong checkpoint file) stand out.
         state_dict = align_clip_vision_keys(state_dict, model.state_dict().keys())
         result = model.load_state_dict(state_dict, strict=False)
         if result.missing_keys:
-            raise RuntimeError(f"Checkpoint {self.checkpoint_path} thiếu trọng số captioner: {result.missing_keys[:3]}")
+            raise RuntimeError(f"Checkpoint {self.checkpoint_path} is missing captioner weights: {result.missing_keys[:3]}")
         if result.missing_keys or result.unexpected_keys:
             print(
-                f"[!] load_state_dict (strict=False) tren {self.checkpoint_path}: "
+                f"[!] load_state_dict (strict=False) on {self.checkpoint_path}: "
                 f"missing_keys={result.missing_keys}, unexpected_keys={result.unexpected_keys}"
             )
         model.eval()

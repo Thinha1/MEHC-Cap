@@ -196,7 +196,7 @@ class RetrievalBank:
 
     def retrieve(self, image_path: str | Path) -> RetrievalResult:
         if not self.loaded:
-            raise RuntimeError("Kho truy hồi chưa được nạp.")
+            raise RuntimeError("Retrieval store is not loaded.")
         image = self._encode_image(Path(image_path))
         sims, idx = (image @ self._bank.T).topk(self.k, dim=1)
         neighbours = [

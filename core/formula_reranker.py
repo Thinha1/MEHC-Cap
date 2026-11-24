@@ -60,7 +60,7 @@ def _belief_alpha(sim: float, confidence: float) -> float:
 
 class FormulaReranker:
     """Deterministic composite reranker -- no network call, no LLM. Implements the S_total
-    formula from "De xuat Co che Re-ranking Tong hop cho Mo hinh Sinh chu thich anh":
+    formula from the proposal "A combined reranking mechanism for image captioning models":
 
         linear:
             S_total(c) = alpha*S_base(c) + beta*S_align(c) + gamma*S_det(c)

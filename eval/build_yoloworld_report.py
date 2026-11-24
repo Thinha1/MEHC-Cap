@@ -1,10 +1,12 @@
-"""Tạo bản sao của một report rerank, thay vật thể YOLOv8n bằng YOLO-World (yolov8l-worldv2).
+"""Build an evaluation report whose objects come from YOLO-World (yolov8l-worldv2).
 
-Giữ nguyên ảnh, câu tham chiếu, câu mốc; chỉ thay trường "objects" và "yolo_classes", nên mọi script
-đánh giá đọc report (retrieval_logit_bias_experiment.py, logit_bias_final_eval.py) dùng được ngay với
-bằng chứng YOLO-World. YOLO chạy từng ảnh, ngưỡng 0,25, tối đa 20 vật thể, như lúc tạo bằng chứng train.
+Images, reference captions and baseline captions are kept. Only "objects" and "yolo_classes" change, so every
+evaluation script that reads a report (retrieval_logit_bias_experiment.py, logit_bias_final_eval.py) can use the
+YOLO-World evidence directly. YOLO runs per image, threshold 0.25, at most 20 objects. With --split, a new report is
+built from dataset_coco.json (no generated captions yet).
 
-Chạy: python eval/build_yoloworld_report.py --report results/X.json --output results/X_yoloworld.json
+Usage: python eval/build_yoloworld_report.py --report results/X.json --output results/X_yoloworld.json
+       python eval/build_yoloworld_report.py --split test --output results/test_yoloworld.json
 """
 from __future__ import annotations
 
@@ -26,13 +28,13 @@ from yolo_objects import YoloObjectExtractor  # noqa: E402
 def main() -> None:
     ap = argparse.ArgumentParser()
     src = ap.add_mutually_exclusive_group(required=True)
-    src.add_argument("--report", type=Path, help="report có sẵn (giữ câu, chỉ thay objects)")
-    src.add_argument("--split", choices=["val", "test"], help="tạo report mới từ dataset_coco.json (chưa có câu sinh)")
+    src.add_argument("--report", type=Path, help="existing report (captions kept, only the objects change)")
+    src.add_argument("--split", choices=["val", "test"], help="build a new report from dataset_coco.json (no generated captions)")
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--yolo-model", default="yolov8l-worldv2.pt")
     ap.add_argument("--conf", type=float, default=0.25)
     ap.add_argument("--max-objects", type=int, default=20)
-    ap.add_argument("--max-rows", type=int, default=None, help="chỉ lấy N ảnh đầu (vd tập con 1.000 ảnh val)")
+    ap.add_argument("--max-rows", type=int, default=None, help="keep only the first N images (e.g. the 1,000-image val subset)")
     args = ap.parse_args()
 
     if args.split:
@@ -54,7 +56,7 @@ def main() -> None:
             print(f"{i + 1}/{len(data['rows'])} ({(time.time() - t0) / (i + 1):.2f}s/img)", flush=True)
     args.output.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
-    # Láng giềng truy hồi không phụ thuộc YOLO: dùng lại cache của report gốc.
+    # Retrieval neighbours do not depend on YOLO: reuse the cache of the source report.
     src = CACHE / f"neighbours_{args.report.stem}_k5.npy" if args.report else None
     dst = CACHE / f"neighbours_{args.output.stem}_k5.npy"
     if src and src.exists() and not dst.exists():

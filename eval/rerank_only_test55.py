@@ -1,7 +1,7 @@
-"""Chạy test đúng một lần với ngưỡng 0,55 đã chọn trên val: chỉ bộ chọn lại câu dùng ngưỡng mới, câu đã sinh với luật chặn ở 0,25. CPU.
+"""Run test once with the 0.55 threshold chosen on val: only the reranker uses the new threshold, candidates come from the 0.25 blocking rule. CPU.
 
-    python eval/rerank_only_test55.py test    # mô hình đề xuất (DL+CL + LB(Y+R)): các cấu hình chọn câu rồi SPICE cho năm tín hiệu
-    python eval/rerank_only_test55.py cs      # mô hình cơ sở có chặn: năm tín hiệu (r=3) rồi SPICE
+    python eval/rerank_only_test55.py test    # proposed model (DL+CL + LB(Y+R)): all reranker variants, then SPICE for the five signals
+    python eval/rerank_only_test55.py cs      # baseline with blocking: five signals (r=3), then SPICE
 """
 import json, os, shutil, subprocess, sys
 from pathlib import Path
@@ -26,9 +26,9 @@ base = [sys.executable, "eval/sobj_threshold_eval.py", "--report", str(rep), "--
 ev = OUT / f"{s}_rr55_eval.json"
 if not ev.is_file():
     subprocess.run(base + ["--output", str(ev)] + extra, check=True, cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-print(s, "eval xong", flush=True)
+print(s, "eval done", flush=True)
 sp = OUT / f"{s}_rr55_spice_final.json"
 if not sp.is_file():
     subprocess.run(base + ["--output", str(sp), "--final-only", "--spice", "--thresholds", "3"], check=True, cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-print(s, "SPICE xong", flush=True)
+print(s, "SPICE done", flush=True)
 rep.unlink()
