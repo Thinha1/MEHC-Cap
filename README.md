@@ -132,9 +132,9 @@ Observations:
 
 | Path | Role |
 |---|---|
-| `notebooks/01_baseline_clipvit-transformer-coco2014.ipynb` | Train the baseline (cross-entropy) for 40 epochs; the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`baseline_epoch40_seed{41,42,43}.pth`) |
+| `notebooks/01_baseline_clipvit-transformer-coco2014.ipynb` | Train the baseline (cross-entropy) for 40 epochs, with the same preprocessing, augmentation, label smoothing (0.1), gradient clipping (1.0) and early stopping (validation loss, patience 5) as notebook 02; the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`baseline_epoch40_seed{41,42,43}.pth`) |
 | `notebooks/02_train_proposed_dynlogits_contrastive_attnpool.ipynb` | Train the **proposed model** (Dynamic Logits + multi-positive contrastive learning + attention pooling) in two stages (see the first cell); the reported runs use `SEED` = 41, 42, 43 and the epoch-40 checkpoints (`seed{41,42,43}_dynlogits_contrastive_attnpool_epoch40_model.pth`) |
-| `notebooks/03_flickr30k_train_baseline.ipynb`, `04_flickr30k_train_proposed.ipynb` | Train baseline and proposed model on Flickr30k |
+| `notebooks/03_flickr30k_train_baseline.ipynb`, `04_flickr30k_train_proposed.ipynb` | Train baseline and proposed model on Flickr30k; the baseline uses the same training settings as notebook 04 |
 | `notebooks/eval/coco2014-eval-preranking.ipynb` | Evaluate captions before reranking (plain beam search) |
 | `notebooks/eval/coco2014-eval-reranking.ipynb` | Evaluate the full pipeline: candidate generation with the blocking rule, then reranking ([Kaggle](https://www.kaggle.com/code/nganhthnh/mehc-cap-eval-reranking)) |
 | `eval/build_yoloworld_report.py` | Build the YOLO-World object report (the evidence) for an evaluation split |
