@@ -98,13 +98,13 @@ usage: build_yoloworld_report.py [-h] (--report REPORT | --split {val,test})
                                  [--max-rows MAX_ROWS]
 options:
   -h, --help            show this help message and exit
-  --report REPORT       report có sẵn (giữ câu, chỉ thay objects)
-  --split {val,test}    tạo report mới từ dataset_coco.json (chưa có câu sinh)
+  --report REPORT       existing report (keep captions, replace objects only)
+  --split {val,test}    create a new report from dataset_coco.json (no generated captions yet)
   --output OUTPUT
   --yolo-model YOLO_MODEL
   --conf CONF
   --max-objects MAX_OBJECTS
-  --max-rows MAX_ROWS   chỉ lấy N ảnh đầu (vd tập con 1.000 ảnh val)
+  --max-rows MAX_ROWS   only take the first N images (e.g., 1,000-image val subset)
 -> exit 0 (15 s)
 
 ### --help eval/eval_notebook_json.py
@@ -114,40 +114,40 @@ positional arguments:
   files
 options:
   -h, --help  show this help message and exit
-  --spice     thêm SPICE (Java 8, khoảng 30 phút mỗi file)
+  --spice     also compute SPICE (Java 8, ~30 minutes per file)
 -> exit 0 (2 s)
 
 ### --help eval/flickr30k_eval.py
 $ .venv/Scripts/python.exe eval/flickr30k_eval.py --help
 usage: flickr30k_eval.py [-h] {run,merge} ...
-Đánh giá mô hình train trên Flickr30k bằng đúng quy trình đã dùng cho COCO: chặn logits khi suy luận + chọn lại câu.
-Quy trình mỗi ảnh (giống retrieval_logit_bias_experiment.py / sobj_threshold_eval.py, chỉ đổi dữ liệu sang Flickr30k):
-  1. YOLO-World (yolov8l-worldv2, ngưỡng 0,25) -> vật thể thấy được.
-  2. Truy hồi K = 5 câu gần ảnh nhất trong kho câu của tập TRAIN Flickr30k (CLIP ViT-B/32, như COCO).
-  3. Bằng chứng E(I) = YOLO  U  {vật thể được >= r trong K câu truy hồi nhắc tới} (r = 3).
-  4. Luật chặn cố định: z' = z - delta * 1[w là từ vật thể COCO, o(w) không thuộc E(I)] tại mỗi bước giải mã (delta = 0 là không chặn).
-  5. Sinh 5 ứng viên (1 beam thường + diverse beam search), chấm CLIP ViT-B/16 và FormulaReranker (0,2 / 0,4 / 0,4).
-  6. Chọn lại câu: ba tín hiệu (S_base, S_align, S_det) và năm tín hiệu (+ 1,0 x S_obj + 0,1 x S_retr, min-max theo ảnh).
-Hai giai đoạn, để chia ảnh cho tối đa 2 tiến trình song song:
-  run    sinh câu ứng viên cho một đoạn ảnh với một danh sách delta, lưu ra "mảnh" JSON (có thể --resume).
-  merge  gộp các mảnh, tính BLEU/METEOR/ROUGE-L/CIDEr(/SPICE) và CHAIRs/CHAIRi cho từng delta và từng cách chọn lại câu;
-         với --select, chọn delta theo quy tắc của bài (CHAIRs thấp nhất trong các delta mà CIDEr không thấp hơn delta = 0 quá 1 điểm).
-Khác COCO: Flickr30k không có COCO instances nên CHAIR dùng nhãn đúng rút từ 5 caption tham chiếu của ảnh (con số cao hơn, KHÔNG so
-trực tiếp với CHAIR trên COCO). Kho truy hồi là caption của tập train Flickr30k, không phải COCO.
-Ví dụ (từ thư mục gốc của repo, Python có torch + transformers + ultralytics; Java cho METEOR):
-    # 1) chọn delta trên tập val (1.000 ảnh đầu, 2 mảnh chạy song song)
+Evaluate a model trained on Flickr30k using the exact same procedure as COCO: logit blocking during inference + caption reranking.
+Per-image pipeline (same as retrieval_logit_bias_experiment.py / sobj_threshold_eval.py, only switching the dataset to Flickr30k):
+  1. YOLO-World (yolov8l-worldv2, threshold 0.25) -> visible objects.
+  2. Retrieve K = 5 nearest captions from the Flickr30k TRAIN caption bank (CLIP ViT-B/32, same as COCO).
+  3. Evidence E(I) = YOLO  U  {objects mentioned in >= r of the K retrieved captions} (r = 3).
+  4. Fixed blocking rule: z' = z - delta * 1[w is a COCO object word, o(w) not in E(I)] at each decoding step (delta = 0 means no blocking).
+  5. Generate 5 candidates (1 standard beam + diverse beam search), score with CLIP ViT-B/16 and FormulaReranker (0.2 / 0.4 / 0.4).
+  6. Rerank captions: three signals (S_base, S_align, S_det) and five signals (+ 1.0 x S_obj + 0.1 x S_retr, per-image min-max).
+Two stages, allowing images to be sharded across up to 2 parallel processes:
+  run    generate candidate captions for a slice of images over a list of deltas, saving to a JSON "part" file (supports --resume).
+  merge  merge parts and compute BLEU/METEOR/ROUGE-L/CIDEr(/SPICE) and CHAIRs/CHAIRi for each delta and each reranking method;
+         with --select, pick delta by the paper's rule (lowest CHAIRs among deltas whose CIDEr is within 1 point of delta = 0).
+Difference from COCO: Flickr30k has no COCO instances, so CHAIR uses ground-truth labels extracted from each image's 5 reference captions (numbers are higher; do NOT compare
+directly with CHAIR on COCO). The retrieval bank consists of Flickr30k train captions, not COCO.
+Example (from the repo root, Python with torch + transformers + ultralytics; Java for METEOR):
+    # 1) select delta on val split (first 1,000 images, 2 parts in parallel)
     python eval/flickr30k_eval.py run --split val --start 0   --max-images 500 --deltas 0 1 2 3 4 \
         --checkpoint flickr30k_..._best_model.pth --vocab-file flickr30k_..._vocab.json --output results/f30k_val_part0.json
     python eval/flickr30k_eval.py run --split val --start 500 --max-images 500 --deltas 0 1 2 3 4 ... --output results/f30k_val_part500.json
     python eval/flickr30k_eval.py merge --parts results/f30k_val_part0.json results/f30k_val_part500.json \
         --select --output results/f30k_val_eval.json
-    # 2) chạy test với delta đã chọn (ví dụ 3) và delta = 0 để so
+    # 2) run test with the selected delta (e.g. 3) and delta = 0 for comparison
     python eval/flickr30k_eval.py run --split test --deltas 0 3 ... --output results/f30k_test_part0.json
     python eval/flickr30k_eval.py merge --parts results/f30k_test_part*.json --output results/f30k_test_eval.json
 positional arguments:
   {run,merge}
-    run        sinh ứng viên cho một đoạn ảnh với các delta
-    merge      gộp các mảnh và tính chỉ số
+    run        generate candidates for a slice of images across deltas
+    merge      merge parts and compute metrics
 options:
   -h, --help   show this help message and exit
 -> exit 0 (4 s)
@@ -163,10 +163,11 @@ options:
   --output OUTPUT
   --base-report BASE_REPORT
                         unbiased --run-pipeline report (one per seed)
-  --spice               tính thêm SPICE (Java 8, không dùng cache LMDB ~98GB)
+  --spice               also compute SPICE (Java 8, without LMDB cache ~98GB)
   --spice-sides SPICE_SIDES
-                        bên nào tính SPICE khi có --spice: 'biased', 'base'
-                        hoặc 'base,biased' (mỗi điểm ~30k câu)
+                        which side(s) to score with SPICE when --spice is set:
+                        'biased', 'base', or 'base,biased' (~30k captions per
+                        point)
   --merged MERGED       where to save the biased run as a report
 -> exit 0 (6 s)
 
@@ -186,9 +187,9 @@ options:
   -h, --help            show this help message and exit
   --name NAME
   --evidence {union,yolo,retr}
-  --merged MERGED       dùng báo cáo đã ghép sẵn thay vì ghép 4 đoạn
+  --merged MERGED       use a pre-merged report instead of merging 4 parts
   --spice
-  --gpu                 cho phép dùng GPU (mặc định CPU)
+  --gpu                 allow GPU usage (default: CPU)
 -> exit 0 (0 s)
 
 ### --help eval/rerank_with_new_objects.py
@@ -202,7 +203,7 @@ options:
   --objects-report OBJECTS_REPORT
   --output OUTPUT
   --neighbours-from NEIGHBOURS_FROM
-                        report có cache láng giềng cùng thứ tự ảnh
+                        report with cached neighbours in the same image order
 -> exit 0 (14 s)
 
 ### --help eval/retrieval_logit_bias_experiment.py
@@ -230,19 +231,20 @@ options:
   --max-images MAX_IMAGES
   --maj MAJ             neighbours (of 5) that must name an object
   --evidence {union,yolo,retr}
-                        nguồn bằng chứng E(I) của luật chặn: union = YOLO ∪
-                        truy hồi (mặc định), yolo = chỉ YOLO, retr = chỉ truy
-                        hồi
+                        evidence source E(I) for the blocking rule: union =
+                        YOLO ∪ retrieval (default), yolo = YOLO only, retr =
+                        retrieval only
   --configs CONFIGS [CONFIGS ...]
-                        beta,gamma pairs (mặc định 0,0 0,1 0,2 0,4 1,2)
+                        beta,gamma pairs (default: 0,0 0,1 0,2 0,4 1,2)
   --gate-scales GATE_SCALES
-                        với --gate-checkpoint: các hệ số k nhân vào bảng β đã
-                        học, vd '1,2,3' (k = 1 là β gốc)
+                        with --gate-checkpoint: multipliers k applied to the
+                        learned β table, e.g. '1,2,3' (k = 1 is the original β)
   --save-rows           also save full report-format rows (all candidates) per
                         run
   --gate-checkpoint GATE_CHECKPOINT
-                        checkpoint evgate: dùng bảng β đã học (evidence_gate)
-                        thay cho --configs; chạy đúng 1 cấu hình 'gate'
+                        evgate checkpoint: use the learned β table
+                        (evidence_gate) instead of --configs; runs a single
+                        'gate' configuration
   --output OUTPUT
 -> exit 0 (16 s)
 
@@ -253,12 +255,12 @@ usage: signal_table.py [-h] --report REPORT --output OUTPUT
                        [--retr-weights [RETR_WEIGHTS ...]]
 options:
   -h, --help            show this help message and exit
-  --report REPORT       report ('rows') hoặc part ('runs' có 'rows')
+  --report REPORT       report ('rows') or part ('runs' containing 'rows')
   --output OUTPUT
   --neighbours-from NEIGHBOURS_FROM
   --retr-weights [RETR_WEIGHTS ...]
-                        thêm các dòng +λ_retr·S_retr và năm điểm (λ_retr, 1)
-                        với các λ_retr này
+                        add +λ_retr·S_retr and five-signal (λ_retr, 1) rows
+                        for these λ_retr values
 -> exit 0 (6 s)
 
 ### --help eval/sobj_threshold_eval.py
@@ -272,13 +274,15 @@ options:
   --report REPORT
   --output OUTPUT
   --evidence {union,yolo,retr}
-                        nguồn bằng chứng E(I) của S_obj: union = YOLO ∪ truy
-                        hồi (mặc định), yolo = chỉ YOLO, retr = chỉ truy hồi
+                        evidence source E(I) for S_obj: union = YOLO ∪
+                        retrieval (default), yolo = YOLO only, retr = retrieval
+                        only
   --thresholds THRESHOLDS [THRESHOLDS ...]
-  --final-only          chỉ chấm cấu hình năm tín hiệu ở các ngưỡng
-                        --thresholds (bỏ qua các cấu hình khác, dùng khi chấm
-                        SPICE bổ sung)
-  --spice               tính thêm SPICE (Java 8, ~2,5 phút mỗi cấu hình)
+  --final-only          only evaluate the five-signal configuration at
+                        --thresholds (skip other configurations; useful for
+                        supplemental SPICE scoring)
+  --spice               also compute SPICE (Java 8, ~2.5 minutes per
+                        configuration)
 -> exit 0 (7 s)
 
 ### --help eval/sobj_threshold_val.py
@@ -299,10 +303,10 @@ usage: spice_per_caption.py [-h] --report REPORT [--preds [PREDS ...]]
 options:
   -h, --help           show this help message and exit
   --report REPORT
-  --preds [PREDS ...]  file k-sweep có runs[].predictions (first/best)
+  --preds [PREDS ...]  k-sweep file containing runs[].predictions (first/best)
   --output OUTPUT
-  --chunk CHUNK        số cặp mỗi lần gọi SPICE; mỗi phần xong thì lưu
-                       checkpoint
+  --chunk CHUNK        number of pairs per SPICE call; saves a checkpoint after
+                       each chunk finishes
 -> exit 0 (1 s)
 
 ### --help eval/sretr_experiment.py
@@ -356,29 +360,29 @@ On/off rows with three seeds
 ### Step 4 (CPU re-score, no SPICE): eval_notebook_json.py
 $ .venv/Scripts/python.exe eval/eval_notebook_json.py results/check/eval_rerank_seed42_dynlogits_contrastive_attnpool_epoch40_model_d3_test.json
 ===== eval_rerank_seed42_dynlogits_contrastive_attnpool_epoch40_model_d3_test.json
-[*] Dang tokenize (don gian, giong baseline: lowercase + bo dau cau/so)...
-[*] Xong tokenize sau 0.17s
-[*] Dang tinh BLEU-1..4 (pycocoevalcap)...
-[*] Xong BLEU sau 1.23s
-[*] Dang tinh METEOR (pycocoevalcap, can Java)...
-[*] Xong METEOR sau 15.46s
-[*] Dang tinh ROUGE-L (pycocoevalcap)...
-[*] Xong ROUGE-L sau 1.36s
-[*] Dang tinh CIDEr (pycocoevalcap)...
-[*] Xong CIDEr sau 7.31s
-before_rerank  {'BLEU-1': 77.08, 'BLEU-2': 61.31, 'BLEU-3': 47.76, 'BLEU-4': 37.09, 'METEOR': 28.59, 'ROUGE-L': 57.53, 'CIDEr': 119.59, 'CHAIRs': 3.24, 'CHAIRi': 2.33} | khớp metrics đã lưu
-[*] Dang tokenize (don gian, giong baseline: lowercase + bo dau cau/so)...
-[*] Xong tokenize sau 0.20s
-[*] Dang tinh BLEU-1..4 (pycocoevalcap)...
-[*] Xong BLEU sau 1.42s
-[*] Dang tinh METEOR (pycocoevalcap, can Java)...
-[*] Xong METEOR sau 14.95s
-[*] Dang tinh ROUGE-L (pycocoevalcap)...
-[*] Xong ROUGE-L sau 1.30s
-[*] Dang tinh CIDEr (pycocoevalcap)...
-[*] Xong CIDEr sau 7.73s
-five_score     {'BLEU-1': 76.16, 'BLEU-2': 60.34, 'BLEU-3': 46.66, 'BLEU-4': 35.88, 'METEOR': 28.48, 'ROUGE-L': 56.66, 'CIDEr': 119.1, 'CHAIRs': 1.97, 'CHAIRi': 1.44} | khớp metrics đã lưu
-Đã lưu results\check\eval_rerank_seed42_dynlogits_contrastive_attnpool_epoch40_model_d3_test_cpu_eval.json
+[*] Tokenizing (simple, same as baseline: lowercase + strip punctuation/digits)...
+[*] Finished tokenizing in 0.17s
+[*] Computing BLEU-1..4 (pycocoevalcap)...
+[*] Finished BLEU in 1.23s
+[*] Computing METEOR (pycocoevalcap, requires Java)...
+[*] Finished METEOR in 15.46s
+[*] Computing ROUGE-L (pycocoevalcap)...
+[*] Finished ROUGE-L in 1.36s
+[*] Computing CIDEr (pycocoevalcap)...
+[*] Finished CIDEr in 7.31s
+before_rerank  {'BLEU-1': 77.08, 'BLEU-2': 61.31, 'BLEU-3': 47.76, 'BLEU-4': 37.09, 'METEOR': 28.59, 'ROUGE-L': 57.53, 'CIDEr': 119.59, 'CHAIRs': 3.24, 'CHAIRi': 2.33} | matches saved metrics
+[*] Tokenizing (simple, same as baseline: lowercase + strip punctuation/digits)...
+[*] Finished tokenizing in 0.20s
+[*] Computing BLEU-1..4 (pycocoevalcap)...
+[*] Finished BLEU in 1.42s
+[*] Computing METEOR (pycocoevalcap, requires Java)...
+[*] Finished METEOR in 14.95s
+[*] Computing ROUGE-L (pycocoevalcap)...
+[*] Finished ROUGE-L in 1.30s
+[*] Computing CIDEr (pycocoevalcap)...
+[*] Finished CIDEr in 7.73s
+five_score     {'BLEU-1': 76.16, 'BLEU-2': 60.34, 'BLEU-3': 46.66, 'BLEU-4': 35.88, 'METEOR': 28.48, 'ROUGE-L': 56.66, 'CIDEr': 119.1, 'CHAIRs': 1.97, 'CHAIRi': 1.44} | matches saved metrics
+Saved results\check\eval_rerank_seed42_dynlogits_contrastive_attnpool_epoch40_model_d3_test_cpu_eval.json
 -> exit 0 (80 s)
 
 ### Step 2: YOLO-World report, 5 test images
@@ -397,69 +401,69 @@ $ .venv/Scripts/python.exe eval/retrieval_logit_bias_experiment.py --report resu
 [13:02:16] 512 vocab tokens map to COCO objects
 <repo>\core\local_captioner.py:182: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
   checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
-[!] load_state_dict (strict=False) tren checkpoints\seed42_dynlogits_contrastive_attnpool_epoch40_model.pth: missing_keys=[], unexpected_keys=['image_proj.weight', 'image_proj.bias', 'text_proj.weight', 'text_proj.bias', 'image_pool.query', 'image_pool.attn.in_proj_weight', 'image_pool.attn.in_proj_bias', 'image_pool.attn.out_proj.weight', 'image_pool.attn.out_proj.bias', 'text_pool.query', 'text_pool.attn.in_proj_weight', 'text_pool.attn.in_proj_bias', 'text_pool.attn.out_proj.weight', 'text_pool.attn.out_proj.bias']
-[*] Dang tokenize (don gian, giong baseline: lowercase + bo dau cau/so)...
-[*] Xong tokenize sau 0.00s
-[*] Dang tinh BLEU-1..4 (pycocoevalcap)...
-[*] Xong BLEU sau 0.00s
-[*] Bo qua METEOR.
-[*] Dang tinh ROUGE-L (pycocoevalcap)...
-[*] Xong ROUGE-L sau 0.00s
-[*] Dang tinh CIDEr (pycocoevalcap)...
-[*] Xong CIDEr sau 0.01s
-[*] Dang tokenize (don gian, giong baseline: lowercase + bo dau cau/so)...
-[*] Xong tokenize sau 0.00s
-[*] Dang tinh BLEU-1..4 (pycocoevalcap)...
-[*] Xong BLEU sau 0.00s
-[*] Bo qua METEOR.
-[*] Dang tinh ROUGE-L (pycocoevalcap)...
-[*] Xong ROUGE-L sau 0.00s
-[*] Dang tinh CIDEr (pycocoevalcap)...
-[*] Xong CIDEr sau 0.01s
+[!] load_state_dict (strict=False) on checkpoints\seed42_dynlogits_contrastive_attnpool_epoch40_model.pth: missing_keys=[], unexpected_keys=['image_proj.weight', 'image_proj.bias', 'text_proj.weight', 'text_proj.bias', 'image_pool.query', 'image_pool.attn.in_proj_weight', 'image_pool.attn.in_proj_bias', 'image_pool.attn.out_proj.weight', 'image_pool.attn.out_proj.bias', 'text_pool.query', 'text_pool.attn.in_proj_weight', 'text_pool.attn.in_proj_bias', 'text_pool.attn.out_proj.weight', 'text_pool.attn.out_proj.bias']
+[*] Tokenizing (simple, same as baseline: lowercase + strip punctuation/digits)...
+[*] Finished tokenizing in 0.00s
+[*] Computing BLEU-1..4 (pycocoevalcap)...
+[*] Finished BLEU in 0.00s
+[*] Skipping METEOR.
+[*] Computing ROUGE-L (pycocoevalcap)...
+[*] Finished ROUGE-L in 0.00s
+[*] Computing CIDEr (pycocoevalcap)...
+[*] Finished CIDEr in 0.01s
+[*] Tokenizing (simple, same as baseline: lowercase + strip punctuation/digits)...
+[*] Finished tokenizing in 0.00s
+[*] Computing BLEU-1..4 (pycocoevalcap)...
+[*] Finished BLEU in 0.00s
+[*] Skipping METEOR.
+[*] Computing ROUGE-L (pycocoevalcap)...
+[*] Finished ROUGE-L in 0.00s
+[*] Computing CIDEr (pycocoevalcap)...
+[*] Finished CIDEr in 0.01s
 [13:03:05] {'config': 'beta=0,gamma=3', 'beta': 0.0, 'gamma': 3.0, 'same_caption_as_report': 0, 'before_rerank': {'BLEU-4': 20.09, 'CIDEr': np.float64(106.06), 'CHAIRs': 0.0, 'CHAIRi': 0.0, 'mean_len': 9.0}, 'after_rerank': {'BLEU-4': 41.65, 'CIDEr': np.float64(139.13), 'CHAIRs': 0.0, 'CHAIRi': 0.0, 'mean_len': 9.2}}
 [13:03:05] wrote results\smoke_g3.json
 -> exit 0 (70 s)
 
 ### Step 4: five-signal reranker and metrics
 $ .venv/Scripts/python.exe eval/sobj_threshold_eval.py --report results/smoke_g3.json --output results/smoke_g3_eval.json --thresholds 3 --evidence union
-[*] Xong METEOR sau 6.78s
-[*] Dang tinh ROUGE-L (pycocoevalcap)...
-[*] Xong ROUGE-L sau 0.00s
-[*] Dang tinh CIDEr (pycocoevalcap)...
-[*] Xong CIDEr sau 0.01s
+[*] Finished METEOR in 6.78s
+[*] Computing ROUGE-L (pycocoevalcap)...
+[*] Finished ROUGE-L in 0.00s
+[*] Computing CIDEr (pycocoevalcap)...
+[*] Finished CIDEr in 0.01s
 [13:04:04] {'BLEU-1': 74.93, 'BLEU-2': 63.44, 'BLEU-3': 51.82, 'BLEU-4': 41.65, 'METEOR': 25.77, 'ROUGE-L': 55.44, 'CIDEr': 139.13, 'CHAIRs': 0.0, 'CHAIRi': 0.0, 'mean_len': 9.2, 'obj_per_cap': 1.2, 'no_obj_pct': 20.0, 'recall_ref': 66.67}
-[*] Dang tokenize (don gian, giong baseline: lowercase + bo dau cau/so)...
-[*] Xong tokenize sau 0.00s
-[*] Dang tinh BLEU-1..4 (pycocoevalcap)...
-[*] Xong BLEU sau 0.00s
-[*] Dang tinh METEOR (pycocoevalcap, can Java)...
-[*] Xong METEOR sau 6.05s
-[*] Dang tinh ROUGE-L (pycocoevalcap)...
-[*] Xong ROUGE-L sau 0.00s
-[*] Dang tinh CIDEr (pycocoevalcap)...
-[*] Xong CIDEr sau 0.01s
+[*] Tokenizing (simple, same as baseline: lowercase + strip punctuation/digits)...
+[*] Finished tokenizing in 0.00s
+[*] Computing BLEU-1..4 (pycocoevalcap)...
+[*] Finished BLEU in 0.00s
+[*] Computing METEOR (pycocoevalcap, requires Java)...
+[*] Finished METEOR in 6.05s
+[*] Computing ROUGE-L (pycocoevalcap)...
+[*] Finished ROUGE-L in 0.00s
+[*] Computing CIDEr (pycocoevalcap)...
+[*] Finished CIDEr in 0.01s
 [13:04:10] {'BLEU-1': 74.93, 'BLEU-2': 63.44, 'BLEU-3': 51.82, 'BLEU-4': 41.65, 'METEOR': 25.77, 'ROUGE-L': 55.44, 'CIDEr': 139.13, 'CHAIRs': 0.0, 'CHAIRi': 0.0, 'mean_len': 9.2, 'obj_per_cap': 1.2, 'no_obj_pct': 20.0, 'recall_ref': 66.67}
-[*] Dang tokenize (don gian, giong baseline: lowercase + bo dau cau/so)...
-[*] Xong tokenize sau 0.00s
-[*] Dang tinh BLEU-1..4 (pycocoevalcap)...
-[*] Xong BLEU sau 0.00s
-[*] Dang tinh METEOR (pycocoevalcap, can Java)...
-[*] Xong METEOR sau 6.15s
-[*] Dang tinh ROUGE-L (pycocoevalcap)...
-[*] Xong ROUGE-L sau 0.00s
-[*] Dang tinh CIDEr (pycocoevalcap)...
-[*] Xong CIDEr sau 0.01s
+[*] Tokenizing (simple, same as baseline: lowercase + strip punctuation/digits)...
+[*] Finished tokenizing in 0.00s
+[*] Computing BLEU-1..4 (pycocoevalcap)...
+[*] Finished BLEU in 0.00s
+[*] Computing METEOR (pycocoevalcap, requires Java)...
+[*] Finished METEOR in 6.15s
+[*] Computing ROUGE-L (pycocoevalcap)...
+[*] Finished ROUGE-L in 0.00s
+[*] Computing CIDEr (pycocoevalcap)...
+[*] Finished CIDEr in 0.01s
 [13:04:16] {'BLEU-1': 74.93, 'BLEU-2': 63.44, 'BLEU-3': 51.82, 'BLEU-4': 41.65, 'METEOR': 25.77, 'ROUGE-L': 55.44, 'CIDEr': 139.13, 'CHAIRs': 0.0, 'CHAIRi': 0.0, 'mean_len': 9.2, 'obj_per_cap': 1.2, 'no_obj_pct': 20.0, 'recall_ref': 66.67}
-[*] Dang tokenize (don gian, giong baseline: lowercase + bo dau cau/so)...
-[*] Xong tokenize sau 0.00s
-[*] Dang tinh BLEU-1..4 (pycocoevalcap)...
-[*] Xong BLEU sau 0.00s
-[*] Dang tinh METEOR (pycocoevalcap, can Java)...
-[*] Xong METEOR sau 6.79s
-[*] Dang tinh ROUGE-L (pycocoevalcap)...
-[*] Xong ROUGE-L sau 0.00s
-[*] Dang tinh CIDEr (pycocoevalcap)...
-[*] Xong CIDEr sau 0.01s
+[*] Tokenizing (simple, same as baseline: lowercase + strip punctuation/digits)...
+[*] Finished tokenizing in 0.00s
+[*] Computing BLEU-1..4 (pycocoevalcap)...
+[*] Finished BLEU in 0.00s
+[*] Computing METEOR (pycocoevalcap, requires Java)...
+[*] Finished METEOR in 6.79s
+[*] Computing ROUGE-L (pycocoevalcap)...
+[*] Finished ROUGE-L in 0.00s
+[*] Computing CIDEr (pycocoevalcap)...
+[*] Finished CIDEr in 0.01s
 [13:04:23] {'BLEU-1': 74.93, 'BLEU-2': 63.44, 'BLEU-3': 51.82, 'BLEU-4': 41.65, 'METEOR': 25.77, 'ROUGE-L': 55.44, 'CIDEr': 139.13, 'CHAIRs': 0.0, 'CHAIRi': 0.0, 'mean_len': 9.2, 'obj_per_cap': 1.2, 'no_obj_pct': 20.0, 'recall_ref': 66.67}
 [13:04:23] wrote results\smoke_g3_eval.json
 -> exit 0 (77 s)
