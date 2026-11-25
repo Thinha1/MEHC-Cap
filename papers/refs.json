@@ -119,203 +119,203 @@
   "link": "https://doi.org/10.1109/cvprw63382.2024.00732"
  },
  {
-  "n": 19,
+  "n": 18,
   "reference": "P. Zhang et al., “VinVL: Revisiting Visual Representations in Vision-Language Models,” in CVPR, 2021, pp. 5575–5584.",
   "doi": "10.1109/cvpr46437.2021.00553",
   "arxiv": "2101.00529",
   "link": "https://doi.org/10.1109/cvpr46437.2021.00553"
  },
  {
-  "n": 20,
+  "n": 19,
   "reference": "R. Mokady, A. Hertz, and A. H. Bermano, “ClipCap: CLIP Prefix for Image Captioning,” arXiv:2111.09734, 2021, doi: 10.48550/arXiv.2111.09734.",
   "doi": "10.48550/arXiv.2111.09734",
   "arxiv": "2111.09734",
   "link": "https://doi.org/10.48550/arXiv.2111.09734"
  },
  {
-  "n": 21,
+  "n": 20,
   "reference": "N. V. Thinh, T. V. Lang, and V. T. Thanh, “OD-VR-Cap: Image Captioning Based on Detecting and Predicting Relationships Between Objects,” Journal of Computer Science and Cybernetics, vol. 40, no. 4, pp. 327–346, 2024, doi: 10.15625/1813-9663/20929.",
   "doi": "10.15625/1813-9663/20929",
   "arxiv": null,
   "link": "https://doi.org/10.15625/1813-9663/20929"
  },
  {
-  "n": 22,
+  "n": 21,
   "reference": "N. V. Thinh, T. V. Lang, and V. T. Thanh, “RGTranCNet: Effective Image Captioning Model Using Cross-Attention and Semantic Knowledge,” Vietnam Journal of Science and Technology, vol. 64, no. 1, pp. 123–138, 2025, doi: 10.15625/2525-2518/22381.",
   "doi": "10.15625/2525-2518/22381",
   "arxiv": null,
   "link": "https://doi.org/10.15625/2525-2518/22381"
  },
  {
-  "n": 23,
+  "n": 22,
   "reference": "N. V. Thinh, T. V. Lang, and V. T. Thanh, “Integrating Abstract Meaning Representation to Enhance Transformer-Based Image Captioning,” IEEE Access, vol. 13, pp. 112528–112551, 2025, doi: 10.1109/ACCESS.2025.3584128.",
   "doi": "10.1109/ACCESS.2025.3584128",
   "arxiv": null,
   "link": "https://doi.org/10.1109/ACCESS.2025.3584128"
  },
  {
-  "n": 24,
+  "n": 23,
   "reference": "S. Petryk et al., “ALOHa: A New Measure for Hallucination in Captioning Models,” in NAACL, 2024, pp. 342–357.",
   "doi": "10.18653/v1/2024.naacl-short.30",
   "arxiv": "2404.02904",
   "link": "https://doi.org/10.18653/v1/2024.naacl-short.30"
  },
  {
-  "n": 25,
+  "n": 24,
   "reference": "B. Liu et al., “Show, Deconfound and Tell: Image Captioning with Causal Inference,” in CVPR, 2022, pp. 18020–18029.",
   "doi": "10.1109/cvpr52688.2022.01751",
   "arxiv": null,
   "link": "https://doi.org/10.1109/cvpr52688.2022.01751"
  },
  {
-  "n": 26,
+  "n": 25,
   "reference": "S. J. Rennie et al., “Self-Critical Sequence Training for Image Captioning,” in CVPR, 2017, pp. 1179–1195.",
   "doi": "10.1109/cvpr.2017.131",
   "arxiv": "1612.00563",
   "link": "https://doi.org/10.1109/cvpr.2017.131"
  },
  {
-  "n": 27,
+  "n": 26,
   "reference": "A. van den Oord, Y. Li, and O. Vinyals, “Representation Learning with Contrastive Predictive Coding,” arXiv:1807.03748, 2018, doi: 10.48550/arXiv.1807.03748.",
   "doi": "10.48550/arXiv.1807.03748",
   "arxiv": "1807.03748",
   "link": "https://doi.org/10.48550/arXiv.1807.03748"
  },
  {
-  "n": 28,
+  "n": 27,
   "reference": "P. Khosla et al., “Supervised Contrastive Learning,” in NeurIPS, 2020, pp. 18661–18673.",
   "doi": null,
   "arxiv": "2004.11362",
   "link": "https://arxiv.org/abs/2004.11362"
  },
  {
-  "n": 29,
+  "n": 28,
   "reference": "M. Yuksekgonul et al., “When and Why Vision-Language Models Behave Like Bags-of-Words, and What to Do about It?,” in ICLR, 2023.",
   "doi": null,
   "arxiv": "2210.01936",
   "link": "https://arxiv.org/abs/2210.01936"
  },
  {
-  "n": 30,
+  "n": 29,
   "reference": "C.-Y. Chuang, J. Robinson, Y.-C. Lin, A. Torralba, and S. Jegelka, “Debiased Contrastive Learning,” in Advances in Neural Information Processing Systems, vol. 33, 2020, pp. 8765–8775.",
   "doi": null,
   "arxiv": "2007.00224",
   "link": "https://arxiv.org/abs/2007.00224"
  },
  {
-  "n": 31,
+  "n": 30,
   "reference": "A. Vijayakumar et al., “Diverse Beam Search for Improved Description of Complex Scenes,” Proceedings of the AAAI Conference on Artificial Intelligence, vol. 32, no. 1, 2018.",
   "doi": "10.1609/aaai.v32i1.12340",
   "arxiv": null,
   "link": "https://doi.org/10.1609/aaai.v32i1.12340"
  },
  {
-  "n": 32,
+  "n": 31,
   "reference": "R. Ramos, B. Martins, D. Elliott, and Y. Kementchedjhieva, “SmallCap: Lightweight Image Captioning Prompted with Retrieval Augmentation,” in CVPR, 2023, pp. 2840–2849.",
   "doi": "10.1109/cvpr52729.2023.00278",
   "arxiv": "2209.15323",
   "link": "https://doi.org/10.1109/cvpr52729.2023.00278"
  },
  {
-  "n": 33,
+  "n": 32,
   "reference": "R. Ramos, D. Elliott, and B. Martins, “Retrieval-Augmented Image Captioning,” in EACL, 2023, pp. 3666–3681.",
   "doi": "10.18653/v1/2023.eacl-main.266",
   "arxiv": "2302.08268",
   "link": "https://doi.org/10.18653/v1/2023.eacl-main.266"
  },
  {
-  "n": 34,
+  "n": 33,
   "reference": "J. Li, D. M. Vo, A. Sugimoto, and H. Nakayama, “EVCap: Retrieval-Augmented Image Captioning with External Visual-Name Memory for Open-World Comprehension,” in CVPR, 2024, pp. 13733–13742.",
   "doi": "10.1109/cvpr52733.2024.01303",
   "arxiv": "2311.15879",
   "link": "https://doi.org/10.1109/cvpr52733.2024.01303"
  },
  {
-  "n": 35,
+  "n": 34,
   "reference": "W. Li, J. Li, R. Ramos, R. Tang, and D. Elliott, “Understanding Retrieval Robustness for Retrieval-Augmented Image Captioning,” in ACL, 2024, pp. 9285–9299.",
   "doi": "10.18653/v1/2024.acl-long.503",
   "arxiv": "2406.02265",
   "link": "https://doi.org/10.18653/v1/2024.acl-long.503"
  },
  {
-  "n": 36,
+  "n": 35,
   "reference": "N. V. Thinh, T. V. Lang, and N. M. Hai, “CLIP-AMR-GPT: Enhancing Image Captioning via Cross-Modal Semantics Fusion and GPT-Based Re-ranking,” in Multi-disciplinary Trends in Artificial Intelligence – 18th International Conference, MIWAI 2025, Proceedings, Lecture Notes in Computer Science, vol. 16354, pp. 210–221, Springer, 2026, doi: 10.1007/978-981-95-4960-3_17.",
   "doi": "10.1007/978-981-95-4960-3_17",
   "arxiv": null,
   "link": "https://doi.org/10.1007/978-981-95-4960-3_17"
  },
  {
-  "n": 37,
+  "n": 36,
   "reference": "T. Cheng et al., “YOLO-World: Real-Time Open-Vocabulary Object Detection,” in CVPR, 2024, pp. 16901–16911.",
   "doi": "10.1109/cvpr52733.2024.01599",
   "arxiv": "2401.17270",
   "link": "https://doi.org/10.1109/cvpr52733.2024.01599"
  },
  {
-  "n": 38,
+  "n": 37,
   "reference": "T.-Y. Lin et al., “Microsoft COCO: Common Objects in Context,” in ECCV, 2014, pp. 740–755, doi: 10.1007/978-3-319-10602-1_48.",
   "doi": "10.1007/978-3-319-10602-1_48",
   "arxiv": "1405.0312",
   "link": "https://doi.org/10.1007/978-3-319-10602-1_48"
  },
  {
-  "n": 39,
+  "n": 38,
   "reference": "P. Young, A. Lai, M. Hodosh, and J. Hockenmaier, “From Image Descriptions to Visual Denotations: New Similarity Metrics for Semantic Inference over Event Descriptions,” Transactions of the Association for Computational Linguistics, vol. 2, pp. 67–78, 2014.",
   "doi": "10.1162/tacl_a_00166",
   "arxiv": null,
   "link": "https://doi.org/10.1162/tacl_a_00166"
  },
  {
-  "n": 40,
+  "n": 39,
   "reference": "A. Karpathy and L. Fei-Fei, “Deep Visual-Semantic Alignments for Generating Image Descriptions,” in CVPR, 2015, pp. 3128–3137.",
   "doi": "10.1109/cvpr.2015.7298932",
   "arxiv": "1412.2306",
   "link": "https://doi.org/10.1109/cvpr.2015.7298932"
  },
  {
-  "n": 41,
+  "n": 40,
   "reference": "K. Papineni, S. Roukos, T. Ward, and W.-J. Zhu, “BLEU: A Method for Automatic Evaluation of Machine Translation,” in ACL, 2002, pp. 311–318.",
   "doi": null,
   "arxiv": null,
   "link": "https://doi.org/10.3115/1073083.1073135"
  },
  {
-  "n": 42,
+  "n": 41,
   "reference": "S. Banerjee and A. Lavie, “METEOR: An Automatic Metric for MT Evaluation with Improved Correlation with Human Judgments,” in ACL Workshop, 2005, pp. 65–72.",
   "doi": null,
   "arxiv": null,
   "link": "https://aclanthology.org/W05-0909/"
  },
  {
-  "n": 43,
+  "n": 42,
   "reference": "C.-Y. Lin, “ROUGE: A Package for Automatic Evaluation of Summaries,” in ACL Workshop, 2004, pp. 74–81.",
   "doi": null,
   "arxiv": null,
   "link": "https://aclanthology.org/W04-1013/"
  },
  {
-  "n": 44,
+  "n": 43,
   "reference": "R. Vedantam, C. L. Zitnick, and D. Parikh, “CIDEr: Consensus-based Image Description Evaluation,” in CVPR, 2015, pp. 4566–4575.",
   "doi": "10.1109/cvpr.2015.7299087",
   "arxiv": "1411.5726",
   "link": "https://doi.org/10.1109/cvpr.2015.7299087"
  },
  {
-  "n": 45,
+  "n": 44,
   "reference": "P. Anderson, B. Fernando, M. Johnson, and S. Gould, “SPICE: Semantic Propositional Image Caption Evaluation,” in ECCV, 2016, pp. 382–398.",
   "doi": "10.1007/978-3-319-46454-1_24",
   "arxiv": "1607.08822",
   "link": "https://doi.org/10.1007/978-3-319-46454-1_24"
  },
  {
-  "n": 46,
+  "n": 45,
   "reference": "X. Chen et al., “Microsoft COCO Captions: Data Collection and Evaluation Server,” arXiv:1504.00325, 2015, doi: 10.48550/arXiv.1504.00325.",
   "doi": "10.48550/arXiv.1504.00325",
   "arxiv": "1504.00325",
   "link": "https://doi.org/10.48550/arXiv.1504.00325"
  },
  {
-  "n": 47,
+  "n": 46,
   "reference": "I. Loshchilov and F. Hutter, “Decoupled Weight Decay Regularization,” in ICLR, 2019.",
   "doi": null,
   "arxiv": "1711.05101",
